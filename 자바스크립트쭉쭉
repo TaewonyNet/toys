@@ -1,0 +1,64 @@
+
+빠삭
+var w = null;
+function roop(){
+	if (document.getElementById('ifr') == null)
+	{
+		document.children[0].innerHTML = "<iframe src='"+location.href+"' id='ifr' style='width:100%; height:400px'></iframe>";
+		document.body.style.overflow = 'hidden';
+		window.setTimeout(roop, 1000);
+	}
+	else
+	{
+		window.setTimeout(function(){
+		if (location.href.indexOf('97591') > 0)
+		{
+			alert('끝');
+			return;
+		}
+		w = document.getElementById('ifr').contentWindow;
+		var t = 2000;
+		if (w.$('.lh150').length > 7)
+		{
+			var txt = w.$('.lh150')[Math.round(Math.random() * (w.$('.lh150').length-1), 0)].innerText;
+			w.$('#wr_content')[0].value = txt;
+			w.$('.btn-write-control')[0].firstChild.click();
+			t = 55000;
+		}
+		window.setTimeout(function(){
+			w.$('.btnbgend.f0100ca')[3].click();
+			roop();
+		}, t);
+		}, 4000);
+	}
+}
+roop(); 
+
+폰뷰
+var w = null;
+function roop(){
+	if (document.getElementById('ifr') == null)
+	{
+		document.children[0].innerHTML = "<iframe src='"+location.href+"' id='ifr' style='width:100%; height:400px'></iframe>";
+		document.body.style.overflow = 'hidden';
+		window.setTimeout(roop, 1000);
+	}
+	else
+	{
+		window.setTimeout(function(){
+		if (location.href.indexOf('97591') > 0)
+		{
+			alert('끝');
+			return;
+		}
+		w = document.getElementById('ifr').contentWindow;
+		w.$('#wr_content')[0].value = "반갑습니다."+(w.location.href.substr(location.href.length-1) % 2 == 0 ? '.' : '');
+		w.apms_comment('viewcomment');	
+		window.setTimeout(function(){
+			w.$('a.btn.btn-black.btn-sm')[1].click();
+			roop();
+		}, 55000);
+		}, 4000);
+	}
+}
+roop(); 
