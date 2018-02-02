@@ -1,4 +1,14 @@
-if (location.host == "moviewang.net") { // 무비왕
+if (location.host.indexOf("podbbang.com") > -1) { // 팟빵
+	var cn=$('[name=podbbang_login]')[0];
+	var no=Number(cn.getAttribute('width'));
+	var dn=$('p.download > a')[no];
+	var ep=episode[Number(dn.getAttribute('onclick').split('\'')[1])];
+	dn.setAttribute('href',ep.link_file);
+	dn.setAttribute('download',ep.title);
+	cn.setAttribute('width', no+1);
+	dn.click();
+}
+else if (location.host == "moviewang.net") { // 무비왕
     var o = $('div[id=movie_bt] a.OpenLoad');
     if (o.length > 0) {
         o[0].target = '_self';
