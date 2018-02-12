@@ -1,3 +1,16 @@
+try{
+	// 오픈로드 페이지 확인
+	var ifopenload = $('iframe[src*=openload]');
+	if ((ifopenload != null)
+	    && (ifopenload.length > 0))
+	{
+		location.href = $('iframe[src*=openload]')[0].src;
+	}
+}
+catch(exception) {
+}
+finally {
+}
 if (location.host.indexOf("podbbang.com") > -1) { // 팟빵
 	var cn=$('[name=podbbang_login]')[0];
 	var no=Number(cn.getAttribute('width'));
@@ -14,9 +27,6 @@ else if (location.host == "moviewang.net") { // 무비왕
         o[0].target = '_self';
         o[0].click();
     }
-}
-else if (location.host.indexOf("2sumaker.com") > -1) { // 이슈메이커
-    location.href = $('iframe')[$('iframe').length - 1].src;
 }
 else if (location.host.indexOf("openload") > -1) { // 오픈로드
     location.href = 'http://' + location.host + '/stream/' + $('[id*=stream]')[0].innerText;
