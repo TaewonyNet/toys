@@ -50,3 +50,13 @@ else if (location.host.indexOf('gogovid') > -1) { // 고고vid
     $('body')[0].append(o[0]);
     o[0].click();
 }
+else if (location.host.indexOf('podty') > -1) { // PODTY
+	if ($('video').length > 0)
+	{
+		var o = $('<a/>');
+		o[0].href = $('video')[0].src;
+		o[0].download = document.title;
+		$('body')[0].append(o[0]);
+		o[0].click();
+	}
+}
