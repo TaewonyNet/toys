@@ -1,7 +1,7 @@
 if (document.getElementsByTagName('iframe').length > 0)
 {
 	try{
-		var iframes = ['gdriveplayer.us', 'openload.co'];
+		var iframes = ['gdriveplayer.us', 'openload.co', 'goo.gl'];
 		for (var i=0; i<iframes.length; i++) {
 			var ifopenload = $('iframe[src*="'+iframes[i]+'"]');
 			if ((ifopenload != null)
