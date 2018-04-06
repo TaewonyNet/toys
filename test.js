@@ -34,7 +34,8 @@ else if (location.host == 'moviewang.net') { // 무비왕
     }
 }
 else if (location.host.indexOf('openload') > -1) { // 오픈로드
-    location.href = 'http://' + location.host + '/stream/' + $('[id*=stream]')[0].innerText;
+    //location.href = 'http://' + location.host + '/stream/' + $('[id*=stream]')[0].innerText + '?mime=true';
+    location.href = 'http://' + location.host + '/stream/' + $('div p[style][class]').text() + '?mime=true';
 }
 else if (location.host.indexOf('gdriveplayer.us') > -1) { 
 	location.href = $('video')[0].src;
