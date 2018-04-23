@@ -1,7 +1,7 @@
 if (document.getElementsByTagName('iframe').length > 0)
 {
 	try{
-		var iframes = ['gdriveplayer.us', 'openload.co', 'goo.gl'];
+		var iframes = ['gdriveplayer.us', 'openload.co', 'goo.gl', 'vidtodo.com', 'streamango.com'];
 		for (var i=0; i<iframes.length; i++) {
 			var ifopenload = $('iframe[src*="'+iframes[i]+'"]');
 			if ((ifopenload != null)
@@ -35,29 +35,43 @@ else if (location.host == 'moviewang.net') { // 무비왕
 }
 else if (location.host.indexOf('openload') > -1) { // 오픈로드
     //location.href = 'http://' + location.host + '/stream/' + $('[id*=stream]')[0].innerText;
-    location.href = 'http://' + location.host + '/stream/' + $('div p[style][class]').text();
+    var c = 'http://' + location.host + '/stream/' + $('div p[style][class]').text();
+	create_a_tag(c, document.title)
 }
 else if (location.host.indexOf('gdriveplayer.us') > -1) { 
-	location.href = $('video')[0].src;
+	create_a_tag($('video')[0].src, document.title)
 }
 else if (location.host.indexOf('tvnamu') > -1) { // 티비나무
-    location.href = $('#link_gogovid')[0].value;
+	create_a_tag($('#link_gogovid')[0].value, document.title)
 }
 else if (location.host.indexOf('gogovid') > -1) { // 고고vid
-    var o = $('<a/>');
     var c = flowplayer('#player').conf;
-    o[0].href = c.clip.sources[0].src;
-    o[0].download = c.title;
-    $('body')[0].append(o[0]);
-    o[0].click();
+	create_a_tag(c.clip.sources[0].src, document.title)
 }
 else if (location.host.indexOf('podty') > -1) { // PODTY
 	if ($('video').length > 0)
 	{
-		var o = $('<a/>');
-		o[0].href = $('video')[0].src;
-		o[0].download = document.title;
-		$('body')[0].append(o[0]);
-		o[0].click();
+		create_a_tag($('video')[0].src, document.title)
 	}
+}
+else if (location.host.indexOf('vidtodo') > -1) { // vidtodo.com
+	if ($('video').length > 0)
+	{
+		create_a_tag($('video')[0].src, document.title)
+	}
+}
+else if (location.host.indexOf('streamango') > -1) { // streamango.com
+	if ($('video').length > 0)
+	{
+		create_a_tag($('#mgvideo_html5_api')[0].src, document.title)
+	}
+}
+
+function create_a_tag(src, title)
+{
+	var o = $('<a/>');
+	o[0].href = src;
+	o[0].download = title;
+	$('body')[0].append(o[0]);
+	o[0].click();
 }
