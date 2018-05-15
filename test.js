@@ -62,6 +62,10 @@ else if (location.host.indexOf('podty') > -1) { // PODTY
 	{
 		create_a_tag($('video')[0].src, document.title);
 	}
+	if ($('audio').length > 0)
+	{
+		create_a_tag($('audio')[0].src, document.title);
+	}
 }
 else if ((location.host.indexOf('vidstodo') > -1)
 		|| (location.host.indexOf('vidtodo') > -1)) { // vidtodo.com
