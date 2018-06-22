@@ -80,3 +80,6 @@ else if (location.host.indexOf('streamango') > -1) { // streamango.com
 		create_a_tag($('#mgvideo_html5_api')[0].src, document.title);
 	}
 }
+else if ($('[data-quality*=mp4]').length > 0) { //
+	create_a_tag($('[data-quality*=mp4]')[0].attributes['data-quality'].value, document.title)
+}
