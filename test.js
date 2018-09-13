@@ -42,7 +42,8 @@ else if (location.host == 'moviewang.net') { // 무비왕
         o[0].click();
     }
 }
-else if (location.host.indexOf('openload') > -1) { // 오픈로드
+else if ((location.host.indexOf('openload') > -1) 
+    || (location.host.indexOf('oload.download') > -1)) { // 오픈로드
     //location.href = 'http://' + location.host + '/stream/' + $('[id*=stream]')[0].innerText;
     var c = 'http://' + location.host + '/stream/' + $('div p[style][class]').text();
 	create_a_tag(c, document.title);
