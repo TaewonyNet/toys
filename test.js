@@ -10,7 +10,7 @@ function create_a_tag(src, title)
 if (document.getElementsByTagName('iframe').length > 0)
 {
 	try{
-		var iframes = ['gdriveplayer.us', 'openload.co', 'goo.gl', 'vidstodo.me', 'vidtodo.com', 'streamango.com', '.ly', '.gd', '.by'];
+		var iframes = ['gdriveplayer', 'openload.co', 'goo.gl', 'vidstodo.me', 'vidtodo.com', 'streamango.com', '.ly', '.gd', '.by'];
 		for (var i=0; i<iframes.length; i++) {
 			var ifopenload = $('iframe[src*="'+iframes[i]+'"]');
 			if ((ifopenload != null)
@@ -48,7 +48,7 @@ else if ((location.host.indexOf('openload') > -1)
     var c = '/stream/' + $('div p[style][class]').text();
 	create_a_tag(c, document.title);
 }
-else if (location.host.indexOf('gdriveplayer.us') > -1) { 
+else if (location.host.indexOf('gdriveplayer') > -1) { 
 	create_a_tag($('video')[0].src, document.title);
 }
 else if (location.host.indexOf('tvnamu') > -1) { // 티비나무
