@@ -3,7 +3,7 @@ function create_a_tag(src, title)
 	var o = $('<a/>');
 	o[0].href = src;
 	o[0].download = title;
-	$('body')[0].append(o[0]);
+	$('body')[0].appendChild(o[0]);
 	o[0].click();
 }
 
