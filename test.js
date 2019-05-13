@@ -10,7 +10,7 @@ function create_a_tag(src, title)
 if (document.getElementsByTagName('iframe').length > 0)
 {
 	try{
-		var iframes = ['gdriveplayer', 'openload.co', 'goo.gl', 'vidstodo.me', 'vidtodo.com', 'streamango.com', '.ly', '.gd', '.by'];
+		var iframes = ['gdriveplayer', 'openload.co', 'goo.gl', 'vidstodo.me', 'vidtodo.com', 'streamango.com', '.ly', '.gd', '.by', 'rapidvideo'];
 		for (var i=0; i<iframes.length; i++) {
 			var ifopenload = $('iframe[src*="'+iframes[i]+'"]');
 			if ((ifopenload != null)
