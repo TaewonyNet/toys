@@ -84,3 +84,6 @@ else if (location.host.indexOf('streamango') > -1) { // streamango.com
 else if ($('[data-quality*=mp4]').length > 0) { //
 	create_a_tag($('[data-quality*=mp4]')[0].attributes['data-quality'].value, document.title)
 }
+else if ($('video').length > 0) {
+	create_a_tag($('video')[0].src, document.title)
+}
