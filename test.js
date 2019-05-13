@@ -11,12 +11,12 @@ if (document.getElementsByTagName('iframe').length > 0)
 {
 	try{
 		var iframes = ['gdriveplayer', 'openload.co', 'goo.gl', 'vidstodo.me', 'vidtodo.com', 'streamango.com', '.ly', '.gd', '.by', 'rapidvideo'];
-		for (var i=0; i<iframes.length; i++) {
-			var ifopenload = $('iframe[src*="'+iframes[i]+'"]');
-			if ((ifopenload != null)
-				&& (ifopenload.length > 0))
-			{
-				location.href = ifopenload[0].src;
+		var ifs = document.getElementsByTagName('iframe');
+		for (var i=0; i<ifs.length; i++){
+			for (var j=0; j<iframes.length; j++) {
+				if (ifs[i].src.indexOf(iframes[j]) > -1) {
+					location.href = ifs[i].src;
+				}
 			}
 		}
 	}
@@ -25,7 +25,7 @@ if (document.getElementsByTagName('iframe').length > 0)
 	finally {
 	}
 }
-if (document.getElementsByTagName('video').length > 0) {
+if ((document.getElementsByTagName('video').length > 0) && (document.getElementsByTagName('video')[0].src != "")) {
 	create_a_tag(document.getElementsByTagName('video')[0].src, document.title);
 }
 else if (location.host.indexOf('podbbang.com') > -1) { // 팟빵
