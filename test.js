@@ -1,10 +1,10 @@
 function create_a_tag(src, title)
 {
-	var o = $('<a/>');
-	o[0].href = src;
-	o[0].download = title;
-	$('body')[0].appendChild(o[0]);
-	o[0].click();
+	var o = document.createElement('a');
+	o.href = src;
+	o.download = title;
+	document.body.appendChild(o);
+	o.click();
 }
 
 if (document.getElementsByTagName('iframe').length > 0)
@@ -25,7 +25,10 @@ if (document.getElementsByTagName('iframe').length > 0)
 	finally {
 	}
 }
-if (location.host.indexOf('podbbang.com') > -1) { // 팟빵
+if (document.getElementsByTagName('video').length > 0) {
+	create_a_tag(document.getElementsByTagName('video')[0].src, document.title);
+}
+else if (location.host.indexOf('podbbang.com') > -1) { // 팟빵
 	var cn=$('[name=podbbang_login]')[0];
 	var no=Number(cn.getAttribute('width'));
 	var dn=$('p.download > a')[no];
@@ -83,7 +86,4 @@ else if (location.host.indexOf('streamango') > -1) { // streamango.com
 }
 else if ($('[data-quality*=mp4]').length > 0) { //
 	create_a_tag($('[data-quality*=mp4]')[0].attributes['data-quality'].value, document.title);
-}
-else if ($('video').length > 0) {
-	create_a_tag($('video')[0].src, document.title);
 }
