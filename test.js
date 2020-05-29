@@ -1,6 +1,19 @@
+
+// 개발자 도구 방지 해제
+if (typeof element == "object"){
+	try{
+		element.__defineGetter__("id", function() {});
+	}
+	catch(exception) {
+	}
+	finally {
+	}
+}
+
 function create_a_tag(src, title)
 {
 	var o = document.createElement('a');
+	o.target = "_blank";
 	o.href = src;
 	o.download = title;
 	document.body.appendChild(o);
