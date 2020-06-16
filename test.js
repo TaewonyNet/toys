@@ -23,7 +23,7 @@ function create_a_tag(src, title)
 if (document.getElementsByTagName('iframe').length > 0)
 {
 	try{
-		var iframes = ['gdriveplayer', 'openload.co', 'goo.gl', 'vidstodo.me', 'vidtodo.com', 'streamango.com', 'verystream.com', '.ly', '.gd', '.by', 'rapidvideo', 'gounlimited', 'mixdrop'];
+		var iframes = ['gdriveplayer', 'openload.co', 'goo.gl', 'vidstodo.me', 'vidtodo.com', 'streamango.com', 'verystream.com', '.ly', '.gd', '.by', 'rapidvideo', 'gounlimited', 'mixdrop', 'drive.google.com'];
 		var ifs = document.getElementsByTagName('iframe');
 		for (var i=0; i<ifs.length; i++){
 			for (var j=0; j<iframes.length; j++) {
