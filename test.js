@@ -1,4 +1,3 @@
-
 // 개발자 도구 방지 해제
 if (typeof element == "object"){
 	try{
@@ -10,6 +9,18 @@ if (typeof element == "object"){
 	}
 }
 
+// 주소에 http가 포함될 경우 해당 페이지로 이동
+if (location.href.indexOf('http', 1) > 0){
+	var loc = location.href.substring(location.href.indexOf('http', 1));
+	if (loc.indexOf('&') > 0){
+		loc = loc.substring(0, loc.indexOf('&'));
+	}
+	location.href = decodeURIComponent(loc);
+}
+// var ele = document.getElementsByTagName('video')[0];
+// var x = (ele.offsetWidth - ele.offsetLeft) / 2 + ele.offsetLeft;
+// var y = (ele.offsetHeight - ele.offsetTop) / 2 + ele.offsetTop;
+// document.elementFromPoint(x, y).click();
 function create_a_tag(src, title)
 {
 	var o = document.createElement('a');
@@ -20,24 +31,30 @@ function create_a_tag(src, title)
 	o.click();
 }
 
-if (document.getElementsByTagName('iframe').length > 0)
+function get_iframe()
 {
-	try{
-		var iframes = ['gdriveplayer', 'openload.co', 'goo.gl', 'vidstodo.me', 'vidtodo.com', 'streamango.com', 'verystream.com', '.ly', '.gd', '.by', 'rapidvideo', 'gounlimited', 'mixdrop', 'drive.google.com'];
-		var ifs = document.getElementsByTagName('iframe');
-		for (var i=0; i<ifs.length; i++){
-			for (var j=0; j<iframes.length; j++) {
-				if (ifs[i].src.indexOf(iframes[j]) > -1) {
-					location.href = ifs[i].src;
+	if (document.getElementsByTagName('iframe').length > 0)
+	{
+		try{
+			var iframes = ['gdriveplayer', 'openload.co', 'goo.gl', 'vidstodo.me', 'vidtodo.com', 'streamango.com', 'verystream.com', '.ly', '.gd', '.by', 'rapidvideo', 'gounlimited', 'mixdrop', 'youtube.googleapis.com', 'embed'];
+			var ifs = document.getElementsByTagName('iframe');
+			for (var i=0; i<ifs.length; i++){
+				for (var j=0; j<iframes.length; j++) {
+					if (ifs[i].src.indexOf(iframes[j]) > -1) {
+						location.href = ifs[i].src;
+						return;
+					}
 				}
 			}
 		}
-	}
-	catch(exception) {
-	}
-	finally {
+		catch(exception) {
+		}
+		finally {
+		}
 	}
 }
+
+get_iframe();
 if ((document.getElementsByTagName('video').length > 0) && (document.getElementsByTagName('video')[0].src != "")) {
 	create_a_tag(document.getElementsByTagName('video')[0].src, document.title);
 }
