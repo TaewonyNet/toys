@@ -10,7 +10,7 @@ if (typeof element == "object"){
 }
 
 // 주소에 http가 포함될 경우 해당 페이지로 이동
-if (location.href.indexOf('http', 1) > 0){
+if (location.href.indexOf('http', 1) > 0 && location.host.indexOf('youtube.googleapis.com') == -1){
 	var loc = location.href.substring(location.href.indexOf('http', 1));
 	if (loc.indexOf('&') > 0){
 		loc = loc.substring(0, loc.indexOf('&'));
