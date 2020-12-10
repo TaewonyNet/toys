@@ -9,6 +9,29 @@ if (typeof element == "object"){
 	}
 }
 
+// https://drive.google.com/drive/
+var tit = document.querySelector('.a-Mg-V-T');
+if (tit != null){
+	var title=tit.innerText.substr(0, tit.innerText.lastIndexOf('.'));
+	var tempElem = document.createElement('textarea');
+	tempElem.value=title;  
+	document.body.appendChild(tempElem);
+	tempElem.select();
+	document.execCommand("copy");
+	document.body.removeChild(tempElem);
+	var src = document.querySelector('.a-q-zb-Ua').src.split('=')[0].split('/');
+	src[2]='drive.google.com';
+	src[3]='file';
+	src[4]=src[5];
+	src[5]=src[6];
+	src[6]='view';
+	var o = document.createElement('a');
+	o.target = "_blank";
+	o.href = src.join('/');;
+	document.body.appendChild(o);
+	o.click();
+}
+
 // 주소에 http가 포함될 경우 해당 페이지로 이동
 if (location.href.indexOf('http', 1) > 0 && location.host.indexOf('youtube.googleapis.com') == -1){
 	var loc = location.href.substring(location.href.indexOf('http', 1));
