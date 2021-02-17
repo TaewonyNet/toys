@@ -79,6 +79,10 @@ function get_iframe()
 
 get_iframe();
 if ((document.getElementsByTagName('video').length > 0) && (document.getElementsByTagName('video')[0].src != "")) {
+	var videonode = document.getElementsByTagName('video')[0];
+    var parentnode = videonode.parentNode;
+	parentnode.remove(videonode);
+    document.body.append(videonode);
 	create_a_tag(document.getElementsByTagName('video')[0].src, document.title);
 }
 else if (location.host.indexOf('podbbang.com') > -1) { // 팟빵
