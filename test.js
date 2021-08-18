@@ -59,7 +59,7 @@ function get_iframe()
 	if (document.getElementsByTagName('iframe').length > 0)
 	{
 		try{
-			var iframes = ['gdriveplayer', 'openload.co', 'goo.gl', 'vidstodo.me', 'vidtodo.com', 'streamango.com', 'verystream.com', '.ly', '.gd', '.by', 'rapidvideo', 'gounlimited', 'mixdrop', 'youtube.googleapis.com', 'embed'];
+			var iframes = ['gdriveplayer', 'openload.co', 'goo.gl', 'vidstodo.me', 'vidtodo.com', 'streamango.com', 'verystream.com', '.ly', '.gd', '.by', 'rapidvideo', 'gounlimited', 'mixdrop', 'youtube.googleapis.com', 'dvd.', 'embed.'];
 			var ifs = document.getElementsByTagName('iframe');
 			for (var i=0; i<ifs.length; i++){
 				for (var j=0; j<iframes.length; j++) {
