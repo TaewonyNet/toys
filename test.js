@@ -144,3 +144,30 @@ else if (location.host.indexOf('streamango') > -1) { // streamango.com
 else if ($('[data-quality*=mp4]').length > 0) { //
 	create_a_tag($('[data-quality*=mp4]')[0].attributes['data-quality'].value, document.title);
 }
+
+
+
+/*
+var notin = [
+'19[0-9]{2}[)]|20[01][0-9][)]|2020[)]'
+].map(function(f){ return new RegExp(f, 'i')});
+function e_r(d, t) { return [...d.querySelectorAll(t)].reverse(); }
+e_r(document, 'div, ul, table').forEach(function(ele) {
+	var children = [];
+	if (ele.nodeName == 'DIV') { children = e_r(ele, 'article'); }
+	if (ele.nodeName == 'UL') { children = e_r(ele, 'li'); }
+	if (ele.nodeName == 'TABLE') { children = e_r(ele, 'tr'); }
+	if (children.length >= 10) {
+		for (var i = children.length - 1; i >= 0 ; i--) {
+			for (var j = 0; j < notin.length; j++) {
+				if (notin[j].exec(children[i].outerHTML) != null) {
+					//console.log(ele, children[i]);
+					children[i].remove();
+					break;
+				}
+			}
+		}
+	}
+})
+
+*/
