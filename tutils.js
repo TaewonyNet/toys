@@ -44,7 +44,7 @@ let tutils = {
                     var tag = ele;
                     for (var i = 0; i < 10; i++) {
                         console.log(tag, e_r(tag.parentElement, tag_a));
-                        if (e_r(tag.parentElement, tag_a).length > 1) {
+                        if (e_r(tag.parentElement, tag_a).length > 2) {
                             console.log(tag, e_r(tag.parentElement, tag_a));
                             tag.remove();
                             break;
