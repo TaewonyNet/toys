@@ -33,30 +33,40 @@ let tutils = {
         this.inRemoveRegexText = value;
         var notin = this.inRemoveRegexText.map(function (f) { return new RegExp(f, 'i') });
         tag_a = 'a:not([href^=javascript])';
-        function e_r(d, t) {
-            if (d == null) { return [] };
-            return [...d.querySelectorAll(t)].reverse();
-        }
-        e_r(document, tag_a).forEach(function (ele) {
-            for (var j = 0; j < notin.length; j++) {
-                if (notin[j].exec(ele.outerHTML) != null) {
-                    //console.log(ele);
-                    var tag = ele;
-                    for (var i = 0; i < 10; i++) {
-                        console.log(tag, e_r(tag.parentElement, tag_a));
-                        if (e_r(tag.parentElement, tag_a).length > 2) {
-                            console.log(tag, e_r(tag.parentElement, tag_a));
-                            tag.remove();
-                            break;
-                        }
-                        else {
-                            tag = tag.parentElement;
+        eles = document.querySelectorAll(tag_a);
+        for (var z=0;z<6;z++){
+            eles_p = [];
+            eles.forEach(function(ele) {
+                if (ele.parentElement != null && eles_p.indexOf(ele.parentElement) == -1) {
+                    eles_p.push(ele.parentElement);
+                }
+            });
+            var is_break = false;
+            for (var i in eles_p) {
+                its = eles_p[i];
+                // console.log(i, its);
+                if (its.querySelectorAll(tag_a).length > 1) {
+                    for (var j = 0; j < notin.length; j++) {
+                        for (var k=its.children.length-1; k>=0;k--) {
+                            console.log('its.children',its.children);
+                            if (notin[j].exec(its.children[k].outerHTML) != null) {
+                                console.log('remove',its.children[k]);
+                                its.children[k].remove();
+                                is_break = true;
+                            }
                         }
                     }
-                    if (tag.parentElement == null) { break; }
                 }
             }
-        })
+            if (is_break) { break; }
+            temp_eles = [];
+            eles.forEach(function(ele) {
+                if (ele.parentElement != null) {
+                    temp_eles.push(ele.parentElement);
+                }
+            });
+            eles = temp_eles;
+        }
     },
     // 로컬스토리지 추가/삭제
     localStorageName: 'tutils',
@@ -141,3 +151,94 @@ let tutils = {
     listElement: null,
 };
 tutils.Storage;
+
+
+var notin = [
+    'seeders">0<'
+].map(function (f) { return new RegExp(f, 'i') });
+tag_a = 'a:not([href^=javascript])';
+function e_r(d, t) {
+    //if (d == null) { return [] };
+    return [...d.querySelectorAll(t)].reverse();
+}
+e_r(document, tag_a).forEach(function (ele) {
+    for (var j = 0; j < notin.length; j++) {
+        //console.log(ele); 
+        var tag = ele;
+        for (var i = 0; i < 10; i++) {
+            if (notin[j].exec(ele.outerHTML) != null) {
+                if (e_r(tag.parentElement, tag_a).length > 2) {
+                    console.log(tag, e_r(tag.parentElement, tag_a));
+                    tag.remove();
+                    break;
+                }
+            }
+            else {
+                tag = tag.parentElement;
+            }
+        }
+        if (tag.parentElement == null) { break; }
+    }
+})
+
+
+var notin = ['seeders">0<'].map(function (f) { return new RegExp(f, 'i') });
+tag_a = 'a:not([href^=javascript])';
+eles = document.querySelectorAll(tag_a);
+for (var z=0;z<6;z++){
+    eles_p = [];
+    eles.forEach(function(ele) {
+        if (ele.parentElement != null && eles_p.indexOf(ele.parentElement) == -1) {
+            eles_p.push(ele.parentElement);
+        }
+    });
+    var is_break = false;
+    for (var i in eles_p) {
+        its = eles_p[i];
+        // console.log(i, its);
+        if (its.querySelectorAll(tag_a).length > 1) {
+            for (var j = 0; j < notin.length; j++) {
+                for (var k=its.children.length-1; k>=0;k--) {
+                    console.log('its.children',its.children);
+                    if (notin[j].exec(its.children[k].outerHTML) != null) {
+                        console.log('remove',its.children[k]);
+                        its.children[k].remove();
+                        is_break = true;
+                    }
+                }
+            }
+        }
+    }
+    if (is_break) { break; }
+    temp_eles = [];
+    eles.forEach(function(ele) {
+        if (ele.parentElement != null) {
+            temp_eles.push(ele.parentElement);
+        }
+    });
+    eles = temp_eles;
+}
+
+
+eles_p[eles[0]]
+
+elegroup = groupBy([...eles], function(x) {
+    return x.parentElement;
+});
+//document.body.children
+for (var i in elegroup) {
+    its = elegroup[i];
+    console.log('i',i);
+    if (its.length > 1) {
+        for (var j = 0; j < notin.length; j++) {
+            for (var k=0; k<its.length;k++) {
+                console.log('i.children',i.children);
+                if (notin[j].exec(i.children[k].outerHTML) != null) {
+                    i.children[k].remove();
+                }
+            }
+        }
+    }
+}
+
+[...eles]
