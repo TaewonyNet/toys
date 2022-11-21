@@ -42,7 +42,7 @@ let tutils = {
                 var tag = ele;
                 for (var i = 0; i < 10; i++) {
                     //console.log(tag, e_r(tag.parentElement, tag_a));
-                    if (e_r(tag.parentElement, tag_a).length > 1) {
+                    if (e_r(tag.parentElement, tag_a).length > 2) {
                         if (notin[j].exec(ele.outerHTML) != null) {
                             console.log(tag, e_r(tag.parentElement, tag_a));
                             tag.remove();
@@ -135,7 +135,7 @@ let tutils = {
                 ei.innerHTML = storage[i] + " <a onclick='tutils.StorageManager.RemoveIndex(" + i + ");tutils.StorageManager.Reload()'>X</a>";
                 el.appendChild(ei);
             }
-        }
+        },
     },
     listElement : null,
 };
