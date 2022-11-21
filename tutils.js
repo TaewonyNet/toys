@@ -61,7 +61,7 @@ let tutils = {
     localStorageName : 'tutils',
     get Storage() {
         var storage = localStorage.getItem(this.localStorageName);
-        if (!storage) { storage = [] } 
+        if (!storage) { storage = '[]' } 
         return JSON.parse(storage);
     },
     set Storage(value) {
