@@ -1,3 +1,16 @@
+function test_code() {
+    tspt = document.createElement('script');
+    tspt.setAttribute('src','//rawgit.com/TaewonyNet/toys/master/tutils.js');
+    tspt.setAttribute('onload','tutilsInit()');
+    document.head.appendChild(tspt);
+    function tutilsInit(){
+        tutils.visitStyle;
+        tutils.InRemoveElements = [
+        ];
+        tutils.StorageManager.View(document.body);
+        tutils.StorageManager.Add(tutils.Storage.length+'<br>');
+    }
+}
 
 let tutils = {
     // 방문 사이트 강조
@@ -55,15 +68,16 @@ let tutils = {
         localStorage.setItem(this.localStorageName, JSON.stringify(value));
     },
     StorageManager : {
-        Add : function (items) {
+        Add : function(items) {
             if (items.constructor == Array) {
                 tutils.Storage = tutils.Storage.concat(...items);
             }
             else {
                 tutils.Storage = tutils.Storage.concat(items);
             }
+            this.Reload();
         },
-        Remove : function (items) {
+        Remove : function(items) {
             var rm = [];
             if (items.constructor == Array) {
                 rm = rm.concat(...items);
@@ -79,7 +93,50 @@ let tutils = {
                 }
             }
             tutils.Storage = storage;
+            this.Reload();
         },
+        RemoveIndex : function(items) {
+            var rm = [];
+            if (items.constructor == Array) {
+                rm = rm.concat(...items);
+            }
+            else {
+                rm = [items];
+            }
+            rm = rm.sort().reverse();
+            var storage = tutils.Storage;
+            for (var i in rm) {
+                var idx = rm[i];
+                if (idx < storage.length) {
+                    storage.splice(idx, 1);
+                }
+            }
+            tutils.Storage = storage;
+            this.Reload();
+        },
+        View : function (element) {
+            if (tutils.listElement != null) {
+                tutils.listElement.remove();
+            }
+            tutils.listElement = document.createElement('div');
+            tutils.listElement.innerHTML = "<div style='display:inline-block;width:100%;height:100px;position:relative;overflow:auto;'><ul style='position:absolute;'></ul></div>";
+            element.insertBefore(tutils.listElement, element.firstChild);
+            this.Reload();
+        },
+        Reload : function() {
+            if (tutils.listElement == null) {
+                return;
+            }
+            var el = tutils.listElement.firstChild.firstChild;
+            el.innerHTML = '';
+            var storage = tutils.Storage;
+            for (var i in storage) {
+                var ei = document.createElement('li');
+                ei.innerHTML = storage[i] + " <a onclick='tutils.StorageManager.RemoveIndex(" + i + ");tutils.StorageManager.Reload()'>X</a>";
+                el.appendChild(ei);
+            }
+        }
     },
+    listElement : null,
 };
 tutils.Storage;
