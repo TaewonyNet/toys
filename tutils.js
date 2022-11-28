@@ -34,9 +34,9 @@ let tutils = {
         var notin = this.inRemoveRegexText.map(function (f) { return new RegExp(f, 'i') });
         tag_a = 'a:not([href^=javascript]):not([tutils])';
         eles = document.querySelectorAll(tag_a);
-        for (var z=0;z<10;z++){
+        for (var z = 0; z < 10; z++) {
             eles_p = [];
-            eles.forEach(function(ele) {
+            eles.forEach(function (ele) {
                 if (ele.parentElement != null && eles_p.indexOf(ele.parentElement) == -1) {
                     eles_p.push(ele.parentElement);
                 }
@@ -45,26 +45,29 @@ let tutils = {
                 var is_break = false;
                 its = eles_p[i];
                 sub_eles = its.querySelectorAll(tag_a);
-                if (sub_eles.length > 1) {
-                    for (var j = 0; j < notin.length; j++) {
-                        for (var k=its.children.length-1; k>=0;k--) {
-                            if (notin[j].exec(its.children[k].outerHTML) != null) {
-                                console.log('remove',its.children[k]);
-                                its.children[k].remove();
-                                is_break = true;
+                if (its.children.length > 1 && sub_eles.length > 1) {
+                    if (its.children[0].tagName == its.children[1].tagName
+                        && its.children[0].getAttribute('class') == its.children[1].getAttribute('class')) {
+                        for (var j = 0; j < notin.length; j++) {
+                            for (var k = its.children.length - 1; k >= 0; k--) {
+                                if (notin[j].exec(its.children[k].outerHTML) != null) {
+                                    console.log('remove', its.children[k]);
+                                    its.children[k].remove();
+                                    is_break = true;
+                                }
                             }
                         }
                     }
                 }
                 if (is_break) {
-                    for (var k=sub_eles.length-1; k>=0;k--) {
+                    for (var k = sub_eles.length - 1; k >= 0; k--) {
                         sub_eles[k].setAttribute('tutils', '1');
                     }
                     return;
                 }
             }
             temp_eles = [];
-            eles.forEach(function(ele) {
+            eles.forEach(function (ele) {
                 if (ele.parentElement != null) {
                     temp_eles.push(ele.parentElement);
                 }
@@ -155,4 +158,3 @@ let tutils = {
     listElement: null,
 };
 tutils.Storage;
-
