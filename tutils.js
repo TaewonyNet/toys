@@ -13,7 +13,8 @@ function test_code() {
         tutils.copyClipReplace = function (x) {return x.split('<br>').join('\n') }
     }
 }
-if (typeof $.ajex !== 'undefined') {
+//if (typeof $.ajex !== 'undefined') {
+if (true) {
     var d = document,
         g = d.createElement('script'),
         s = d.getElementsByTagName('script')[0];
