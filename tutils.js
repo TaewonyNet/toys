@@ -7,11 +7,21 @@ function test_code() {
         tutils.visitStyle;
         tutils.InRemoveElements = [
         ];
+        tutils.StorageManager.ViewButton = true;
         tutils.StorageManager.View(document.body);
         tutils.StorageManager.Add(tutils.Storage.length + '<br>');
+        tutils.copyClipReplace = function (x) {return x.split('<br>').join('\n') }
     }
 }
-
+if ($ == null) {
+    var d = document,
+        g = d.createElement('script'),
+        s = d.getElementsByTagName('script')[0];
+    g.type = 'text/javascript';
+    g.async = true;
+    g.src = 'https://code.jquery.com/jquery-3.5.0.js';
+    s.parentNode.insertBefore(g, s);
+}
 let tutils = {
     // 방문 사이트 강조
     is_visitStyle: false,
@@ -34,27 +44,42 @@ let tutils = {
         var notin = this.inRemoveRegexText.map(function (f) { return new RegExp(f, 'i') });
         tag_a = 'a:not([href^=javascript]):not([tutils])';
         eles = document.querySelectorAll(tag_a);
-        for (var z = 0; z < 10; z++) {
-            eles_p = [];
-            eles.forEach(function (ele) {
-                if (ele.parentElement != null && eles_p.indexOf(ele.parentElement) == -1) {
-                    eles_p.push(ele.parentElement);
+        ats = [];
+        depthnames = [];
+        depths = {};
+        for (i in eles) {
+            var x = eles[i];
+            var xdomlist = tutils.getDomPath(x);
+            xdomlist.pop();
+            for (var i = 0; i < 5; i++) {
+                if (xdomlist.length > 1) {
+                    var xdp = xdomlist.join(' > ');
+                    if (depths[xdp] == null) { depths[xdp] = []; depthnames.push(xdp); }
+                    depths[xdp].push([x, x.getAttribute('href')]);
+                    xdomlist.pop();
                 }
-            });
-            for (var i in eles_p) {
+                else {
+                    break;
+                }
+            }
+        }
+        depthnames.sort(function (a, b) { return b.length - a.length; });
+        for (n in depthnames) {
+            var dp = depthnames[n];
+            if (depths[dp].length > 1) {
                 var is_break = false;
-                its = eles_p[i];
-                sub_eles = its.querySelectorAll(tag_a);
-                if (its.children.length > 1 && sub_eles.length > 1) {
-                    if (its.children[0].tagName == its.children[1].tagName
-                        && its.children[0].getAttribute('class') == its.children[1].getAttribute('class')) {
-                        for (var j = 0; j < notin.length; j++) {
-                            for (var k = its.children.length - 1; k >= 0; k--) {
-                                if (notin[j].exec(its.children[k].outerHTML) != null) {
-                                    console.log('remove', its.children[k]);
-                                    its.children[k].remove();
-                                    is_break = true;
-                                }
+                var its = $(dp)[0];
+                // console.log(n, dp, its);
+                if (its == null) { continue; }
+                var sub_eles = its.querySelectorAll(tag_a);
+                // console.log(dp, its.children.length, sub_eles.length);
+                if (its.children.length > 2 && sub_eles.length > 2) {
+                    for (var j = 0; j < notin.length; j++) {
+                        for (var k = its.children.length - 1; k >= 0; k--) {
+                            if (notin[j].exec(its.children[k].outerHTML) != null) {
+                                console.log('remove', its.children[k].outerHTML);
+                                its.children[k].remove();
+                                is_break = true;
                             }
                         }
                     }
@@ -63,16 +88,8 @@ let tutils = {
                     for (var k = sub_eles.length - 1; k >= 0; k--) {
                         sub_eles[k].setAttribute('tutils', '1');
                     }
-                    return;
                 }
             }
-            temp_eles = [];
-            eles.forEach(function (ele) {
-                if (ele.parentElement != null) {
-                    temp_eles.push(ele.parentElement);
-                }
-            });
-            eles = temp_eles;
         }
     },
     // 로컬스토리지 추가/삭제
@@ -132,6 +149,7 @@ let tutils = {
             tutils.Storage = storage;
             this.Reload();
         },
+        ViewButton: false,
         View: function (element) {
             if (tutils.listElement != null) {
                 tutils.listElement.remove();
@@ -139,7 +157,12 @@ let tutils = {
             tutils.listElement = document.createElement('div');
             tutils.listElement.innerHTML = "<div style='display:inline-block;width:100%;height:100px;position:relative;overflow:auto;'><ul style='position:absolute;'></ul></div>";
             element.insertBefore(tutils.listElement, element.firstChild);
-            this.Reload();
+            if (tutils.StorageManager.ViewButton) {
+                var allbutton = document.createElement('div');
+                allbutton.innerHTML = '<a onclick="tutils.copyClip(tutils.Storage.join(\'\\n\'))" style="color:red">전체복사</a> <a onclick="tutils.StorageManager.Remove(tutils.Storage);" style="color:red">전체삭제</a>';
+                element.insertBefore(allbutton, tutils.listElement);
+                this.Reload();
+            }
         },
         Reload: function () {
             if (tutils.listElement == null) {
@@ -156,5 +179,45 @@ let tutils = {
         },
     },
     listElement: null,
+    copyClip: function (text) {
+        var tempElem = document.createElement('textarea');
+        tempElem.value = tutils.copyClipReplace(text);
+        document.body.appendChild(tempElem);
+        tempElem.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempElem);
+    },
+    copyClipReplace: function (text) {
+        return text;
+    },
+    getDomPath: function (el) {
+        // console.log('getDomPath');
+        var stack = [];
+        while (el.parentNode != null) {
+            // console.log(el.nodeName);
+            var sibCount = 0;
+            var sibIndex = 0;
+            for (var i = 0; i < el.parentNode.childNodes.length; i++) {
+                var sib = el.parentNode.childNodes[i];
+                if (sib.nodeName == el.nodeName) {
+                    if (sib === el) {
+                        sibIndex = sibCount;
+                    }
+                    sibCount++;
+                }
+            }
+            if (el.hasAttribute('id') && el.id != '') {
+                stack.unshift(el.nodeName.toLowerCase() + '#' + el.id);
+            } else if (sibCount > 1) {
+                stack.unshift(el.nodeName.toLowerCase() + ':eq(' + sibIndex + ')');
+            } else {
+                stack.unshift(el.nodeName.toLowerCase());
+            }
+            el = el.parentNode;
+        }
+        return stack.slice(1); // removes the html element
+    },
+
 };
 tutils.Storage;
+
