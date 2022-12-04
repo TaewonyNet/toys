@@ -13,7 +13,7 @@ function test_code() {
         tutils.copyClipReplace = function (x) {return x.split('<br>').join('\n') }
     }
 }
-if ($ == null) {
+if (!$.ajax) {
     var d = document,
         g = d.createElement('script'),
         s = d.getElementsByTagName('script')[0];
