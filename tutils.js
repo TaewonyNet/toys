@@ -228,4 +228,5 @@ function newtutils() {
 
     };
     tutils.Storage;
+    if (typeof tutilsInit !== 'undefined') { tutilsInit(); }
 };
