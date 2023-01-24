@@ -7,6 +7,7 @@ function test_code() {
     tspt.setAttribute('onload', 'tutilsInit()');
     document.head.appendChild(tspt);
     function tutilsInit() {
+        var storage = tutils.Storage;
         tutils.visitStyle;
         tutils.InRemoveElements = [
         ];
@@ -211,7 +212,6 @@ let tutils = {
         }
         return stack.slice(1); // removes the html element
     },
-
 };
 tutils.Storage;
 if (typeof tutilsInit !== 'undefined') { tutilsInit(); }
