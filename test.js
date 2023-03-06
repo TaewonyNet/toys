@@ -12,6 +12,9 @@ if (typeof element == "object"){
 // https://drive.google.com/drive/
 var tit = document.querySelector('.a-Mg-V-T');
 if (tit != null){
+	if (typeof(fn_timer) != 'undefined') {
+		clearInterval(fn_timer);
+	}
 	var title=tit.innerText.substr(0, tit.innerText.lastIndexOf('.'));
 	var tempElem = document.createElement('textarea');
 	tempElem.value=title;  
@@ -19,13 +22,17 @@ if (tit != null){
 	tempElem.select();
 	document.execCommand("copy");
 	document.body.removeChild(tempElem);
-	var src = ['//drive.google.com/file/d/', 
+	var src = ['https://drive.google.com/file/d/', 
 			document.querySelector('.GZwC2b').getAttribute('jsdata').split(';')[1], 
 			'/view'];
 	var ifr = document.querySelector('#viframe');
 	if (ifr == null) {
-		setInterval(function() { 
-			if (ifr.src != ifr.getAttribute('bf_src')) {
+		ifr = document.createElement('iframe');
+		ifr.id = 'viframe';
+		ifr.setAttribute('style', 'display:none');
+		ifr.onload = function() { 
+			console.log(ifr);
+			fn_timer = setInterval(function() { 
 				var v_ele = ifr.contentDocument.querySelector('#drive-viewer-video-player-object-0');
 				if (v_ele != null) {
 					if (v_ele.getAttribute('src') != null) {
@@ -34,18 +41,14 @@ if (tit != null){
 						o.href = v_ele.src;
 						document.body.appendChild(o);
 						o.click();
-						ifr.setAttribute('bf_src', ifr.src);
+						clearInterval(fn_timer);
 					}
 				}
-			}
 			}, 1000); 
-		ifr = document.createElement('iframe');
-		ifr.id = 'viframe';
-		ifr.setAttribute('style', 'display:none');
+		}
 		document.body.insertBefore(ifr, document.body.firstChild);
 	}
-	ifr.setAttribute('bf_src', ifr.src);
-	ifr.src = src.join('/');
+	ifr.src = src.join('');
 }
 
 // 주소에 http가 포함될 경우 해당 페이지로 이동
