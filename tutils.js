@@ -35,6 +35,7 @@ let tutils = {
     // 보기싫은 게시물 삭제
     inRemoveRegexText: [],
     set InRemoveElements(value) {
+        if (!value || value.length == 0) { return; }
         this.inRemoveRegexText = value;
         var notin = this.inRemoveRegexText.map(function (f) { return new RegExp(f, 'i') });
         tag_a = 'a:not([href^=javascript]):not([tutils])';
@@ -89,67 +90,61 @@ let tutils = {
     },
     // 로컬스토리지 추가/삭제
     localStorageName: 'tutils',
-    getStorage: function (name) {
-        if (!name) { name = this.localStorageName }
-        var storage = localStorage.getItem(name);
+    defaultStorage: function (name) { return !name ? this.localStorageName : name },
+    getStorage: function (name) {        
+        var storage = localStorage.getItem(this.defaultStorage(name));
         if (!storage) { storage = '[]' }
         return JSON.parse(storage);
     },
     setStorage: function (name, value) {
-        if (!name) { name = this.localStorageName }
-        localStorage.setItem(name, JSON.stringify(value));
+        localStorage.setItem(this.defaultStorage(name), JSON.stringify(value));
+    },
+    additemsStorage: function (name, items) {
+        name = this.defaultStorage(name);
+        this.setStorage(name, this.getStorage(name).concat(...items.constructor == Array ? items : [items]))
+    },
+    removeitemsStorage: function (name, items) {
+        name = this.defaultStorage(name);
+        var rm = [...items.constructor == Array ? items : [items]];
+        var storage = this.getStorage(name);
+        for (var i in rm) {
+            var idx = storage.indexOf(rm[i]);
+            if (idx > -1) {
+                storage.splice(idx, 1);
+            }
+        }
+        this.setStorage(name, storage)
+    },
+    removeindexStorage: function (name, items) {
+        name = this.defaultStorage(name);
+        var rm = [...items.constructor == Array ? items : [items]];
+        rm = rm.sort().reverse();
+        var storage = this.getStorage(name);
+        for (var i in rm) {
+            var idx = rm[i];
+            if (idx < storage.length) {
+                storage.splice(idx, 1);
+            }
+        }
+        this.setStorage(name, storage)
     },
     get Storage() {
-        return this.getStorage();
+        return this.getStorage(this.localStorageName);
     },
     set Storage(value) {
-        this.setStorage(this.localStorageName, JSON.stringify(value));
+        this.setStorage(this.localStorageName, value);
     },
     StorageManager: {
         Add: function (items) {
-            if (items.constructor == Array) {
-                tutils.Storage = tutils.Storage.concat(...items);
-            }
-            else {
-                tutils.Storage = tutils.Storage.concat(items);
-            }
+            tutils.additemsStorage(this.localStorageName, items);
             this.Reload();
         },
         Remove: function (items) {
-            var rm = [];
-            if (items.constructor == Array) {
-                rm = rm.concat(...items);
-            }
-            else {
-                rm = [items];
-            }
-            var storage = tutils.Storage;
-            for (var i in rm) {
-                var idx = storage.indexOf(rm[i]);
-                if (idx > -1) {
-                    storage.splice(idx, 1);
-                }
-            }
-            tutils.Storage = storage;
+            tutils.removeitemsStorage(this.localStorageName, items);
             this.Reload();
         },
         RemoveIndex: function (items) {
-            var rm = [];
-            if (items.constructor == Array) {
-                rm = rm.concat(...items);
-            }
-            else {
-                rm = [items];
-            }
-            rm = rm.sort().reverse();
-            var storage = tutils.Storage;
-            for (var i in rm) {
-                var idx = rm[i];
-                if (idx < storage.length) {
-                    storage.splice(idx, 1);
-                }
-            }
-            tutils.Storage = storage;
+            tutils.removeindexStorage(this.localStorageName, items);
             this.Reload();
         },
         ViewButton: false,
