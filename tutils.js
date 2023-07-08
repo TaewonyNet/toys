@@ -148,6 +148,7 @@ let tutils = {
             this.Reload();
         },
         ViewButton: false,
+        ViewOrderAsc: true,
         View: function (element) {
             if (tutils.listElement != null) {
                 tutils.listElement.remove();
@@ -173,6 +174,9 @@ let tutils = {
                 var ei = document.createElement('li');
                 ei.innerHTML = storage[i] + " <a onclick='tutils.StorageManager.RemoveIndex(" + i + ");tutils.StorageManager.Reload()'>X</a>";
                 el.appendChild(ei);
+            }
+            if (!this.ViewOrderAsc) {
+                el.childNodes.forEach(function (x) { x.parentNode.insertBefore(x, x.parentNode.firstChild) })
             }
         },
     },
