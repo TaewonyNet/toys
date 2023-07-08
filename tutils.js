@@ -103,7 +103,7 @@ let tutils = {
         return this.getStorage();
     },
     set Storage(value) {
-        setStorage(this.localStorageName, JSON.stringify(value));
+        this.setStorage(this.localStorageName, JSON.stringify(value));
     },
     StorageManager: {
         Add: function (items) {
