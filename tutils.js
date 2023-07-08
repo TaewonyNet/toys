@@ -89,13 +89,21 @@ let tutils = {
     },
     // 로컬스토리지 추가/삭제
     localStorageName: 'tutils',
-    get Storage() {
-        var storage = localStorage.getItem(this.localStorageName);
+    getStorage: function (name) {
+        if (!name) { name = this.localStorageName }
+        var storage = localStorage.getItem(name);
         if (!storage) { storage = '[]' }
         return JSON.parse(storage);
     },
+    setStorage: function (name, value) {
+        if (!name) { name = this.localStorageName }
+        localStorage.setItem(name, JSON.stringify(value));
+    },
+    get Storage() {
+        return this.getStorage();
+    },
     set Storage(value) {
-        localStorage.setItem(this.localStorageName, JSON.stringify(value));
+        setStorage(this.localStorageName, JSON.stringify(value));
     },
     StorageManager: {
         Add: function (items) {
@@ -211,6 +219,18 @@ let tutils = {
             el = el.parentNode;
         }
         return stack.slice(1); // removes the html element
+    },
+    getDocAction: async function (url, callback, isjson) {
+        const response = await fetch(url);
+        const html = await response.text();
+        if (isjson) {
+            callback(html);
+        }
+        else {    
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
+            callback(doc);
+        }
     },
 };
 tutils.Storage;
