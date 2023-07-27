@@ -19,13 +19,14 @@ function test_code() {
 }
 let tutils = {
     // 방문 사이트 강조
+    css_visitStyle: 'a {border-left: solid 20px green !important;} a:visited {color:white !important;border-color: red !important;}',
     is_visitStyle: false,
     get visitStyle() {
         this.is_visitStyle = !this.is_visitStyle;
         if (this.is_visitStyle) {
             this.visitStyleElement = document.createElement('style');
             this.visitStyleElement.setAttribute('type', 'text/css');
-            this.visitStyleElement.innerHTML = 'a {border-left: solid 20px green;} a:visited {color:white;border-color: red;}'
+            this.visitStyleElement.innerHTML = this.css_visitStyle;
             document.head.appendChild(this.visitStyleElement);
         } else {
             this.visitStyleElement.remove();
