@@ -9,7 +9,9 @@ function test_code() {
     function tutilsInit() {
         var storage = tutils.Storage;
         tutils.visitStyle;
+        tutils.InRemoveSelectsAdd(['ul.resultList li']);
         tutils.InRemoveElements = [
+            '불가'
         ];
         tutils.StorageManager.ViewButton = true;
         tutils.StorageManager.View(document.body);
@@ -34,56 +36,60 @@ let tutils = {
         }
     },
     // 보기싫은 게시물 삭제
+    InRemoveSelects: ['a:not([href^=javascript]):not([tutils])'],
+    InRemoveSelectsAdd: function (items) { return this.InRemoveSelects = (items.constructor == Array ? items : [items]).concat(this.InRemoveSelects) },
     inRemoveRegexText: [],
     set InRemoveElements(value) {
         if (!value || value.length == 0) { return; }
         this.inRemoveRegexText = value;
         var notin = this.inRemoveRegexText.map(function (f) { return new RegExp(f, 'i') });
-        tag_a = 'a:not([href^=javascript]):not([tutils])';
-        eles = document.querySelectorAll(tag_a);
-        ats = [];
-        depthnames = [];
-        depths = {};
-        for (i in eles) {
-            var x = eles[i];
-            var xdomlist = tutils.getDomPath(x);
-            for (var i = 0; i < 5; i++) {
-                if (xdomlist.length > 1) {
-                    var xdp = xdomlist.join(' > ');
-                    if (depths[xdp] == null) { depths[xdp] = []; depthnames.push(xdp); }
-                    depths[xdp].push([x, x.getAttribute('href')]);
-                    xdomlist.pop();
-                }
-                else {
-                    break;
-                }
-            }
-        }
-        depthnames.sort(function (a, b) { return b.length - a.length; });
-        for (n in depthnames) {
-            var dp = depthnames[n];
-            if (depths[dp].length > 1) {
-                var is_break = false;
-                var its = $(dp)[0];
-                // console.log(n, dp, its);
-                if (its == null) { continue; }
-                var sub_eles = its.querySelectorAll(tag_a);
-                // console.log(dp, its.children.length, sub_eles.length);
-                if (its.children.length > 2 && sub_eles.length > 2) {
-                    for (var j = 0; j < notin.length; j++) {
-                        for (var k = its.children.length - 1; k >= 0; k--) {
-                            if (notin[j].exec(its.children[k].outerHTML) != null) {
-                                console.log('remove', its.children[k].outerHTML);
-                                its.children[k].remove();
-                                is_break = true;
-                            }
-                        }
-
+        for (s in this.InRemoveSelects) {
+            var tag_a = this.InRemoveSelects[s];
+            eles = document.querySelectorAll(tag_a);
+            ats = [];
+            depthnames = [];
+            depths = {};
+            for (i in eles) {
+                var x = eles[i];
+                var xdomlist = tutils.getDomPath(x);
+                for (var i = 0; i < 5; i++) {
+                    if (xdomlist.length > 1) {
+                        var xdp = xdomlist.join(' > ');
+                        if (depths[xdp] == null) { depths[xdp] = []; depthnames.push(xdp); }
+                        depths[xdp].push([x, x.getAttribute('href')]);
+                        xdomlist.pop();
+                    }
+                    else {
+                        break;
                     }
                 }
-                if (is_break) {
-                    for (var k = sub_eles.length - 1; k >= 0; k--) {
-                        sub_eles[k].setAttribute('tutils', '1');
+            }
+            depthnames.sort(function (a, b) { return b.length - a.length; });
+            for (n in depthnames) {
+                var dp = depthnames[n];
+                if (depths[dp].length > 1) {
+                    var is_break = false;
+                    var its = $(dp)[0];
+                    // console.log(n, dp, its);
+                    if (its == null) { continue; }
+                    var sub_eles = its.querySelectorAll(tag_a);
+                    // console.log(dp, its.children.length, sub_eles.length);
+                    if (its.children.length > 2 && sub_eles.length > 2) {
+                        for (var j = 0; j < notin.length; j++) {
+                            for (var k = its.children.length - 1; k >= 0; k--) {
+                                if (notin[j].exec(its.children[k].outerHTML) != null) {
+                                    console.log('remove', its.children[k].outerHTML);
+                                    its.children[k].remove();
+                                    is_break = true;
+                                }
+                            }
+    
+                        }
+                    }
+                    if (is_break) {
+                        for (var k = sub_eles.length - 1; k >= 0; k--) {
+                            sub_eles[k].setAttribute('tutils', '1');
+                        }
                     }
                 }
             }
