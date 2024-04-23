@@ -239,5 +239,67 @@ let tutils = {
         }
     },
 };
+const TVIST = 'tvisit'
+let tvisit = {
+    get Storage() {
+        return JSON.parse(localStorage.getItem(TVIST)) || [];
+    },
+    set Storage(value) {
+        localStorage.setItem(TVIST, JSON.stringify(value));
+    },
+    add: function(site) {
+        let visits = this.Storage;
+        if (!visits.includes(site)) {
+            visits.push(site);
+            this.Storage = visits;
+        }
+    },
+    remove: function(site) {
+        let visits = this.Storage;
+        let index = visits.indexOf(site);
+        if (index !== -1) {
+            visits.splice(index, 1);
+            this.Storage = visits;
+        }
+    }
+};
+let tcookie = {
+    get: function(name) {
+        let matches = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"));
+        return matches ? decodeURIComponent(matches[1]) : undefined;
+    },
+    set: function(name, value) {
+        document.cookie = name + "=" + value + ";"
+    }
+}
+function showAlert(message, timeout=3000) {
+    var alertBox = document.createElement('div');
+    alertBox.style.position = 'fixed';
+    alertBox.style.top = '50%';
+    alertBox.style.left = '50%';
+    alertBox.style.transform = 'translate(-50%, -50%)';
+    alertBox.style.backgroundColor = '#fff';
+    alertBox.style.border = '1px solid #ccc';
+    alertBox.style.padding = '20px';
+    alertBox.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+    var alertMessage = document.createElement('p');
+    alertMessage.style.margin = '0';
+    alertMessage.innerText = message;
+    var closeButton = document.createElement('span');
+    closeButton.style.position = 'absolute';
+    closeButton.style.top = '5px';
+    closeButton.style.right = '5px';
+    closeButton.style.cursor = 'pointer';
+    closeButton.innerText = 'X';
+    closeButton.addEventListener('click', function() {
+        alertBox.remove();
+    });
+    alertBox.appendChild(alertMessage);
+    alertBox.appendChild(closeButton);
+    document.body.appendChild(alertBox);
+    setTimeout(function() {
+        alertBox.remove();
+    }, timeout);
+}
 tutils.Storage;
 if (typeof tutilsInit !== 'undefined') { tutilsInit(); }
