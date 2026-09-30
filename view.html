@@ -120,6 +120,9 @@
 
   #pane-reader article { max-width: 42em; margin: 0 auto; font-family: "Noto Serif KR", Georgia, "Times New Roman", serif; }
   #pane-reader article h1 { font-size: 1.5em; line-height: 1.3; }
+
+  #pane-openapi { margin: 0 -16px; }
+  #openapiBox .swagger-ui .scheme-container { box-shadow: none; background: transparent; }
   #pane-reader article img { max-width: 100%; }
 </style>
 </head>
@@ -134,15 +137,30 @@
   <div id="notice" class="notice hidden"></div>
   <section id="pane-text" class="hidden"><pre id="textPre" class="wrap"></pre></section>
   <section id="pane-json" class="hidden"><div id="jsonTree" class="tree"></div><pre id="jsonRaw" class="hidden"></pre><div id="jsonQuery"></div></section>
+  <section id="pane-csv" class="hidden"><div id="csvTable"></div></section>
   <section id="pane-markdown" class="hidden"><div id="md" class="markdown-body"></div></section>
   <section id="pane-mermaid" class="hidden"><div id="mmd"></div></section>
   <section id="pane-reader" class="hidden"><article id="readerBody" class="markdown-body"></article></section>
+  <section id="pane-openapi" class="hidden"><div id="openapiBox"></div></section>
 </main>
 <div id="pathbar" class="hidden"><code id="pathText"></code><button id="copyPath" type="button">경로 복사</button><button id="copyValue" type="button">값 복사</button></div>
 <div id="toast" class="toast"></div>
 <script>
 (function () {
   "use strict";
+  (function guardNetwork() {
+    var deny = function () { return Promise.reject(new Error("이 페이지는 네트워크 요청을 보내지 않습니다.")); };
+    if (window.fetch) window.fetch = deny;
+    var OrigXHR = window.XMLHttpRequest;
+    if (OrigXHR) {
+      window.XMLHttpRequest = function () {
+        var xhr = new OrigXHR();
+        xhr.open = function () { throw new Error("이 페이지는 네트워크 요청을 보내지 않습니다."); };
+        return xhr;
+      };
+    }
+    if (navigator.sendBeacon) navigator.sendBeacon = function () { return false; };
+  })();
   var tg = window.Telegram && window.Telegram.WebApp;
   if (tg) { tg.ready(); tg.expand(); }
 
@@ -166,7 +184,11 @@
   }
   function openLink(url) { if (!/^https?:\/\//i.test(url)) return; if (tg && tg.openLink) tg.openLink(url); else window.open(url, "_blank", "noopener"); }
   function notice(message) { var n = $("notice"); n.textContent = message; n.classList.remove("hidden"); }
-  function setTheme(dark) { state.dark = dark; document.documentElement.setAttribute("data-theme", dark ? "dark" : "light"); }
+  function setTheme(dark) {
+    state.dark = dark;
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    document.documentElement.classList.toggle("dark-mode", dark);
+  }
   setTheme((tg && tg.colorScheme === "dark") || (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches));
 
   function b64urlToBytes(text) { var b = text.replace(/-/g, "+").replace(/_/g, "/"); while (b.length % 4) b += "="; var s = atob(b), u = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
@@ -195,19 +217,38 @@
   }
   function looksHtml(text) { return /^\s*(<!doctype html|<html[\s>]|<body[\s>]|<article[\s>])/i.test(text); }
   function looksMarkdown(text) { return /^#{1,6}\s|^```|^\s*[-*]\s+\S|\[[^\]]+\]\([^)]+\)|^\|.*\|\s*$|^>\s/m.test(text); }
+  function csvLineCols(line) {
+    var n = 0, inQuotes = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line.charAt(i);
+      if (c === '"') inQuotes = !inQuotes;
+      else if (c === "," && !inQuotes) n++;
+    }
+    return n + 1;
+  }
+  function looksCsv(text) {
+    var lines = text.trim().split(/\r?\n/).filter(function (l) { return l.length; }).slice(0, 8);
+    if (lines.length < 2) return false;
+    var first = csvLineCols(lines[0]);
+    if (first < 2) return false;
+    return lines.every(function (l) { return csvLineCols(l) === first; });
+  }
   function detect(text) {
     if (state.format !== "auto") return state.format;
     if (parseJson(text)) return "json";
     if (looksHtml(text)) return "reader";
     if (MERMAID_HEAD.test(text)) return "mermaid";
     if (looksMarkdown(text)) return "markdown";
+    if (looksCsv(text)) return "csv";
     return "text";
   }
 
-  var MODES = [["text", "글"], ["json", "JSON"], ["markdown", "MD"], ["mermaid", "Mermaid"], ["reader", "리더"]];
+  var MODES = [["text", "글"], ["json", "JSON"], ["csv", "CSV"], ["markdown", "MD"], ["mermaid", "Mermaid"], ["reader", "리더"], ["openapi", "API"]];
   function available(mode) {
     if (mode === "json") return state.data !== undefined;
+    if (mode === "csv") return state.format === "csv" || looksCsv(state.raw);
     if (mode === "mermaid") return MERMAID_HEAD.test(state.raw) || /```mermaid/.test(state.raw);
+    if (mode === "openapi") return state.format === "openapi";
     return true;
   }
   function renderTabs() {
@@ -228,7 +269,7 @@
     renderTabs();
     $("toolbar").textContent = "";
     if (force) rendered[mode] = false;
-    ({ text: showText, json: showJson, markdown: showMarkdown, mermaid: showMermaid, reader: showReader })[mode]();
+    ({ text: showText, json: showJson, csv: showCsv, markdown: showMarkdown, mermaid: showMermaid, reader: showReader, openapi: showOpenapi })[mode]();
     window.scrollTo(0, 0);
   }
 
@@ -353,7 +394,9 @@
           var existing = details.querySelector(":scope > .tblwrap");
           if (existing) { existing.remove(); return; }
           var t = tableOf(value), wrap = el("div", "tblwrap");
-          wrap.appendChild(btn("CSV 복사", function () { copy(t.csv, "CSV 를"); })); wrap.appendChild(t.table);
+          wrap.appendChild(btn("CSV 복사", function () { copy(t.csv, "CSV 를"); }));
+          wrap.appendChild(btn("💾 CSV 저장", function () { download((state.title || "table").replace(/[\\/:*?"<>|]/g, "") + ".csv", t.csv, "text/csv"); }));
+          wrap.appendChild(t.table);
           details.insertBefore(wrap, sum.nextSibling); details.open = true;
         }, "객체 배열을 표로 본다"); tb.className = "tbl-btn"; sum.appendChild(tb);
       }
@@ -446,6 +489,82 @@
     bar.appendChild(qi); bar.appendChild(btn("실행", run));
     if (state.jsonl) notice("JSON Lines — 한 줄에 하나씩 " + state.data.length + "개를 배열로 보여줍니다.");
     if (!rendered.json) { paintJson(); rendered.json = true; }
+  }
+
+  function parseCsv(text) {
+    var rows = [], row = [], field = "", inQuotes = false, i = 0, n = text.length;
+    while (i < n) {
+      var c = text.charAt(i);
+      if (inQuotes) {
+        if (c === '"') { if (text.charAt(i + 1) === '"') { field += '"'; i += 2; continue; } inQuotes = false; i++; continue; }
+        field += c; i++; continue;
+      }
+      if (c === '"') { inQuotes = true; i++; continue; }
+      if (c === ",") { row.push(field); field = ""; i++; continue; }
+      if (c === "\r") { i++; continue; }
+      if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; i++; continue; }
+      field += c; i++;
+    }
+    row.push(field);
+    if (!(rows.length && row.length === 1 && row[0] === "")) rows.push(row);
+    return rows;
+  }
+  var csvState = { header: null, rows: null, sortCol: -1, sortDir: 1, query: "" };
+  function csvParsed() {
+    if (!csvState.rows) {
+      var all = parseCsv(state.raw);
+      csvState.header = all.length ? all[0] : [];
+      csvState.rows = all.slice(1);
+    }
+    return csvState;
+  }
+  function csvFiltered() {
+    var s = csvParsed(), rows = s.rows;
+    if (s.query) {
+      var q = s.query.toLowerCase();
+      rows = rows.filter(function (r) { return r.some(function (c) { return c.toLowerCase().indexOf(q) >= 0; }); });
+    }
+    if (s.sortCol >= 0) {
+      var col = s.sortCol, dir = s.sortDir;
+      rows = rows.slice().sort(function (a, b) {
+        var av = a[col] || "", bv = b[col] || "", an = Number(av), bn = Number(bv), cmp;
+        if (av !== "" && bv !== "" && !isNaN(an) && !isNaN(bn)) cmp = an - bn; else cmp = av.localeCompare(bv);
+        return cmp * dir;
+      });
+    }
+    return rows;
+  }
+  function paintCsv() {
+    var s = csvParsed(), box = $("csvTable"); box.textContent = "";
+    var t = el("table", "grid"), head = el("tr");
+    s.header.forEach(function (col, i) {
+      var arrow = s.sortCol === i ? (s.sortDir === 1 ? " ▲" : " ▼") : "";
+      var th = el("th", null, col + arrow); th.style.cursor = "pointer";
+      th.addEventListener("click", function () {
+        if (s.sortCol === i) s.sortDir *= -1; else { s.sortCol = i; s.sortDir = 1; }
+        paintCsv();
+      });
+      head.appendChild(th);
+    });
+    t.appendChild(head);
+    var rows = csvFiltered();
+    rows.forEach(function (r) {
+      var tr = el("tr");
+      s.header.forEach(function (_, i) { tr.appendChild(el("td", null, r[i] || "")); });
+      t.appendChild(tr);
+    });
+    box.appendChild(t);
+    $("csvCount").textContent = rows.length + "/" + s.rows.length + "행";
+  }
+  function showCsv() {
+    var bar = $("toolbar"), s = csvParsed();
+    var q = el("input"); q.type = "search"; q.placeholder = "찾기"; var timer;
+    q.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(function () { s.query = q.value; paintCsv(); }, 200); });
+    bar.appendChild(q);
+    var c = el("span", "count"); c.id = "csvCount"; bar.appendChild(c);
+    bar.appendChild(btn("CSV 복사", function () { copy(state.raw, "CSV 를"); }));
+    bar.appendChild(btn("💾 .csv 저장", function () { download((state.title || "table").replace(/[\\/:*?"<>|]/g, "") + ".csv", state.raw, "text/csv"); }));
+    paintCsv();
   }
 
   var mermaidLoading = null;
@@ -554,6 +673,65 @@
     var src = MERMAID_HEAD.test(state.raw) ? state.raw : ((state.raw.match(/```mermaid\s*\n([\s\S]*?)```/) || [])[1] || state.raw);
     $("toolbar").appendChild(btn("📋 코드 복사", function () { copy(src, "Mermaid 코드를"); }));
     if (!rendered.mermaid) { var box = $("mmd"); box.textContent = ""; box.appendChild(mermaidBlock(null, src)); renderMermaidIn(box); rendered.mermaid = true; }
+  }
+
+  var swaggerLoading = null;
+  function loadSwaggerUi() {
+    if (window.SwaggerUIBundle) return Promise.resolve(true);
+    if (swaggerLoading) return swaggerLoading;
+    swaggerLoading = new Promise(function (resolve) {
+      var link = el("link"); link.rel = "stylesheet"; link.href = "vendor/swagger-ui.css";
+      document.head.appendChild(link);
+      var s = el("script"); s.src = "vendor/swagger-ui-bundle.js";
+      s.onload = function () { resolve(true); }; s.onerror = function () { resolve(false); };
+      document.head.appendChild(s); setTimeout(function () { resolve(!!window.SwaggerUIBundle); }, 20000);
+    });
+    return swaggerLoading;
+  }
+  function guardSpecImages(container) {
+    var neutralize = function (img) {
+      var src = img.getAttribute("src") || "";
+      if (/^data:image\//i.test(src)) return;
+      img.setAttribute("data-blocked-src", src.slice(0, 200));
+      img.removeAttribute("src"); img.removeAttribute("srcset");
+    };
+    Array.prototype.forEach.call(container.querySelectorAll("img"), neutralize);
+    new MutationObserver(function (records) {
+      records.forEach(function (rec) {
+        Array.prototype.forEach.call(rec.addedNodes, function (node) {
+          if (node.nodeType !== 1) return;
+          if (node.tagName === "IMG") neutralize(node);
+          if (node.querySelectorAll) Array.prototype.forEach.call(node.querySelectorAll("img"), neutralize);
+        });
+      });
+    }).observe(container, { childList: true, subtree: true });
+  }
+  function showOpenapi() {
+    var box = $("openapiBox");
+    if (rendered.openapi) return;
+    box.textContent = "";
+    box.appendChild(el("div", "notice", "명세를 불러오는 중…"));
+    var spec;
+    try { spec = JSON.parse(state.raw); } catch (e) {
+      box.textContent = ""; box.appendChild(el("div", "notice", "OpenAPI 명세가 올바른 JSON 이 아닙니다: " + e.message)); return;
+    }
+    loadSwaggerUi().then(function (ok) {
+      box.textContent = "";
+      if (!ok || !window.SwaggerUIBundle) { box.appendChild(el("div", "notice", "Swagger UI 를 불러오지 못해 원문으로 보여줍니다.")); var pre = el("pre", null, state.raw); pre.style.whiteSpace = "pre-wrap"; box.appendChild(pre); return; }
+      guardSpecImages(box);
+      window.SwaggerUIBundle({
+        spec: spec,
+        domNode: box,
+        presets: [window.SwaggerUIBundle.presets.apis],
+        plugins: [window.SwaggerUIBundle.plugins.DownloadUrl],
+        supportedSubmitMethods: [],
+        validatorUrl: null,
+        docExpansion: "list",
+        deepLinking: false,
+        showMutatedRequest: false,
+      });
+      rendered.openapi = true;
+    });
   }
 
   var readerSize = 18;

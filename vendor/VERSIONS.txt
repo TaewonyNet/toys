@@ -4,3 +4,6 @@ marked  18.0.14  MIT  marked.umd.js  21568877a938d2c4e7d74e27f18e60da96bb73a6880
 dompurify  3.4.16  MPL-2.0-OR-Apache-2.0  purify.min.js  2c90a9b46d6463f26038a29b686e82bc91de01fdac9d5229e7cfe3b360134ea2
 mermaid  12.0.0  MIT  mermaid.min.js  28fca7ae6ebc7ed7bb63bde63136a74bfef14f296a57e403657eeb8b32836073
 @mozilla/readability  0.6.0  Apache-2.0  Readability.js  34dcab3d0832d0019f02990eed6b6124e029e8c32b9f0c6f2550544ff8dff174
+swagger-ui-dist  5.33.0  Apache-2.0  swagger-ui-bundle.js  62df541529080464a7660adc793eab7128c6193ce3be24ddc1e0e0a4a63edc2f
+swagger-ui-dist  5.33.0  Apache-2.0  swagger-ui.css  23ae95db3e810a3e1eb7d8995ddb587dd463c25d0c06bbd768d58ec8b08f6981
+# swagger-ui-bundle.js·swagger-ui.css 는 끝의 sourceMappingURL 주석 줄을 지운 사본이라 npm 원본과 sha256 이 다르다(위 값은 지운 뒤)
