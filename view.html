@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>보기</title>
+<!--
+  통합 뷰어 Mini App — TelegramCommander 규약 8-4-2절 · 8-11절.
+  글 · JSON · Markdown · Mermaid · 리더 를 한 페이지에서 본다.
+
+  데이터는 주소의 `#` 뒤에서만 읽는다 — f=형식, t=제목(base64url), z=본문(deflate-raw+base64url)
+  또는 j=본문(base64url). `#` 뒤는 서버로 가지 않으므로 이 페이지를 내주는 서버도 데이터를 못 본다.
+  데이터를 어디로도 보내지 않는다. 라이브러리는 같은 서버의 vendor/ 에서만 받는다(VERSIONS.txt).
+  Markdown·HTML 은 DOMPurify 로 거른 뒤에만 넣는다. 외부 이미지는 기본으로 막는다(열람자 IP 노출).
+  Markdown 모드는 TaewonyNet/toys markdownveiwer.js(2026-09-15)의 동작을 옮겼다.
+-->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="vendor/purify.min.js"></script>
+<script src="vendor/marked.umd.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --fg: var(--tg-theme-text-color, #0f172a);
+    --muted: var(--tg-theme-hint-color, #64748b);
+    --accent: var(--tg-theme-link-color, #2563eb);
+    --panel: var(--tg-theme-secondary-bg-color, #f1f5f9);
+    --line: rgba(128, 128, 128, 0.28);
+    --key: #7c3aed; --str: #047857; --num: #b45309; --bool: #be185d; --null: #64748b;
+    --hit: rgba(250, 204, 21, 0.5); --cur: rgba(249, 115, 22, 0.6);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0f19; --fg: #e5e7eb; --muted: #94a3b8; --panel: #1f2937; --accent: #60a5fa;
+    --key: #c4b5fd; --str: #6ee7b7; --num: #fcd34d; --bool: #f9a8d4; --null: #9ca3af;
+    --hit: rgba(250, 204, 21, 0.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); }
+  body { font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding: 10px 16px 8px; }
+  h1#title { font-size: 15px; margin: 0; word-break: break-all; }
+  .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .tabs { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; }
+  .tabs button { flex: none; }
+  .tabs button[aria-selected="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .bar { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+  .bar input[type="search"], .bar input[type="text"] {
+    flex: 1 1 140px; min-width: 0; font: inherit; font-size: 14px; padding: 7px 9px; border-radius: 9px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--fg);
+  }
+  button, select {
+    font: inherit; font-size: 13px; padding: 6px 9px; border-radius: 9px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--fg); white-space: nowrap; cursor: pointer;
+  }
+  button[aria-pressed="true"] { outline: 2px solid var(--accent); }
+  .count { color: var(--muted); font-size: 12px; }
+  main { padding: 12px 16px 60px; }
+  .hidden { display: none !important; }
+  .notice { background: var(--panel); border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 10px; }
+  .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--fg); color: var(--bg);
+    padding: 8px 14px; border-radius: 999px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; }
+  .toast.on { opacity: .92; }
+  mark { background: var(--hit); color: inherit; border-radius: 3px; }
+  mark.cur { background: var(--cur); }
+
+  #pane-text pre { margin: 0; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 4; }
+  #pane-text pre.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+  #pane-text pre:not(.wrap) { overflow-x: auto; }
+  #pane-text .ln { color: var(--muted); user-select: none; display: inline-block; min-width: 3.2em; }
+
+  .tree { font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+  .tree details details, .tree details > .leaf { margin-left: 14px; }
+  .tree summary { cursor: pointer; list-style: none; padding: 1px 0; }
+  .tree summary::-webkit-details-marker { display: none; }
+  .tree summary::before { content: "▸"; display: inline-block; width: 12px; color: var(--muted); }
+  .tree details[open] > summary::before { content: "▾"; }
+  .tree .leaf { padding: 1px 0 1px 12px; }
+  .k { color: var(--key); cursor: pointer; } .s { color: var(--str); white-space: pre-wrap; } .n { color: var(--num); }
+  .b { color: var(--bool); } .z { color: var(--null); } .c { color: var(--muted); }
+  .v { cursor: copy; border-radius: 4px; }
+  .sel { background: var(--panel); outline: 1px solid var(--accent); border-radius: 4px; }
+  .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 3px; border: 1px solid var(--line); margin-left: 4px; vertical-align: -1px; }
+  .hint { color: var(--muted); font-size: 11px; margin-left: 6px; }
+  .badge { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 0 4px; margin-left: 4px; }
+  .tbl-btn { font-size: 11px; padding: 1px 6px; margin-left: 6px; }
+  #pathbar { position: sticky; bottom: 0; background: var(--panel); border-top: 1px solid var(--line); padding: 8px 16px;
+    font: 12px/1.4 ui-monospace, Menlo, monospace; display: flex; gap: 6px; align-items: center; }
+  #pathbar code { flex: 1; overflow-x: auto; white-space: nowrap; }
+  .filtered .tree .fhide { display: none; }
+  table.grid { border-collapse: collapse; font: 12px/1.45 ui-monospace, Menlo, monospace; margin: 6px 0 10px; display: block; overflow: auto; max-width: 100%; }
+  table.grid th, table.grid td { border: 1px solid var(--line); padding: 4px 7px; vertical-align: top; max-width: 320px; overflow-wrap: anywhere; }
+  table.grid th { background: var(--panel); position: sticky; top: 0; }
+  #jsonRaw { font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+
+  .markdown-body { line-height: 1.75; font-size: 16px; word-wrap: break-word; }
+  .markdown-body > *:first-child { margin-top: 0; }
+  .markdown-body h1, .markdown-body h2 { padding-bottom: .3em; border-bottom: 1px solid var(--line); }
+  .markdown-body h1 { font-size: 1.7em; margin: .6em 0; } .markdown-body h2 { font-size: 1.4em; margin: 1.5em 0 .6em; }
+  .markdown-body h3 { font-size: 1.2em; margin: 1.3em 0 .5em; }
+  .markdown-body p, .markdown-body ul, .markdown-body ol { margin: 0 0 1em; }
+  .markdown-body ul, .markdown-body ol { padding-left: 1.6em; }
+  .markdown-body blockquote { margin: 0 0 1em; padding: 0 1em; border-left: .25em solid var(--line); opacity: .85; }
+  .markdown-body table { border-collapse: collapse; display: block; overflow: auto; margin: 0 0 1em; }
+  .markdown-body th, .markdown-body td { padding: 6px 12px; border: 1px solid var(--line); }
+  .markdown-body th { background: var(--panel); }
+  .markdown-body hr { height: 1px; border: 0; background: var(--line); margin: 1.6em 0; }
+  .markdown-body a { color: var(--accent); }
+  .markdown-body img { max-width: 100%; }
+  .markdown-body :not(pre) > code { padding: .15em .4em; border-radius: 6px; font-size: 85%; background: var(--panel); }
+  .markdown-body pre { position: relative; padding: 40px 14px 14px; border-radius: 8px; background: var(--panel); overflow: auto; }
+  .markdown-body pre code { font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
+  .blocked-img { display: inline-block; font-size: 12px; color: var(--muted); border: 1px dashed var(--line); border-radius: 6px; padding: 4px 8px; }
+  .front-matter { margin-bottom: 16px; font-size: 12px; opacity: .8; }
+  .front-matter > summary { cursor: pointer; font-weight: 600; }
+  .front-matter > pre { white-space: pre-wrap; padding: 8px 10px !important; }
+  .action-bar { position: absolute; top: 6px; right: 6px; display: flex; gap: 5px; z-index: 2; }
+  .action-bar button { font-size: 11px; padding: 3px 7px; }
+  .mermaid-wrap { position: relative; padding: 42px 10px 10px; margin: 14px 0; border: 1px solid var(--line); border-radius: 8px; overflow: auto; }
+  .mermaid-wrap svg { max-width: 100%; height: auto; }
+  :root[data-theme="dark"] .mermaid-wrap .mermaid { filter: invert(.92) hue-rotate(180deg) contrast(1.15); }
+
+  #pane-reader article { max-width: 42em; margin: 0 auto; font-family: "Noto Serif KR", Georgia, "Times New Roman", serif; }
+  #pane-reader article h1 { font-size: 1.5em; line-height: 1.3; }
+  #pane-reader article img { max-width: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">보기</h1>
+  <div class="meta" id="meta"></div>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="bar" id="toolbar"></div>
+</header>
+<main>
+  <div id="notice" class="notice hidden"></div>
+  <section id="pane-text" class="hidden"><pre id="textPre" class="wrap"></pre></section>
+  <section id="pane-json" class="hidden"><div id="jsonTree" class="tree"></div><pre id="jsonRaw" class="hidden"></pre><div id="jsonQuery"></div></section>
+  <section id="pane-markdown" class="hidden"><div id="md" class="markdown-body"></div></section>
+  <section id="pane-mermaid" class="hidden"><div id="mmd"></div></section>
+  <section id="pane-reader" class="hidden"><article id="readerBody" class="markdown-body"></article></section>
+</main>
+<div id="pathbar" class="hidden"><code id="pathText"></code><button id="copyPath" type="button">경로 복사</button><button id="copyValue" type="button">값 복사</button></div>
+<div id="toast" class="toast"></div>
+<script>
+(function () {
+  "use strict";
+  var tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  var state = { raw: "", title: "", format: "auto", data: undefined, jsonl: false, mode: null, dark: false, allowImages: false };
+  var $ = function (id) { return document.getElementById(id); };
+
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
+  function btn(label, onClick, title) { var b = el("button", null, label); b.type = "button"; if (title) b.title = title; b.addEventListener("click", onClick); return b; }
+  function toast(message) { var t = $("toast"); t.textContent = message; t.classList.add("on"); clearTimeout(toast.timer); toast.timer = setTimeout(function () { t.classList.remove("on"); }, 1300); }
+  function copy(text, what) {
+    var done = function () { toast((what || "") + " 복사했습니다"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+    else { fallbackCopy(text); done(); }
+  }
+  function fallbackCopy(text) { var a = el("textarea"); a.value = text; document.body.appendChild(a); a.select(); try { document.execCommand("copy"); } catch (e) {} a.remove(); }
+  function download(name, text, type) {
+    try {
+      var a = el("a"); a.href = URL.createObjectURL(new Blob([text], { type: (type || "text/plain") + ";charset=utf-8" }));
+      a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    } catch (e) { copy(text); }
+  }
+  function openLink(url) { if (!/^https?:\/\//i.test(url)) return; if (tg && tg.openLink) tg.openLink(url); else window.open(url, "_blank", "noopener"); }
+  function notice(message) { var n = $("notice"); n.textContent = message; n.classList.remove("hidden"); }
+  function setTheme(dark) { state.dark = dark; document.documentElement.setAttribute("data-theme", dark ? "dark" : "light"); }
+  setTheme((tg && tg.colorScheme === "dark") || (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches));
+
+  function b64urlToBytes(text) { var b = text.replace(/-/g, "+").replace(/_/g, "/"); while (b.length % 4) b += "="; var s = atob(b), u = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+  function inflate(bytes) {
+    if (typeof DecompressionStream === "undefined") return Promise.reject(new Error("이 기기의 웹뷰가 압축 해제(DecompressionStream)를 지원하지 않습니다."));
+    return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+  }
+  function readPayload() {
+    var p = new URLSearchParams(location.hash.replace(/^#/, ""));
+    state.format = p.get("f") || "auto";
+    if (p.get("t")) state.title = new TextDecoder().decode(b64urlToBytes(p.get("t")));
+    if (p.get("z")) return inflate(b64urlToBytes(p.get("z")));
+    if (p.get("j")) return Promise.resolve(new TextDecoder().decode(b64urlToBytes(p.get("j"))));
+    return Promise.reject(new Error("보여줄 데이터가 없습니다. 봇의 [보기] 버튼으로 여세요."));
+  }
+
+  var MERMAID_HEAD = /^\s*(%%.*\n\s*)*(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram(-v2)?|erDiagram|gantt|pie|journey|gitGraph|mindmap|timeline|quadrantChart|xychart-beta|sankey-beta|block-beta|requirementDiagram|C4Context)\b/;
+  function parseJson(text) {
+    var t = text.trim();
+    if (t.charAt(0) === "{" || t.charAt(0) === "[") { try { return { value: JSON.parse(t), jsonl: false }; } catch (e) {} }
+    var lines = t.split(/\r?\n/).filter(function (l) { return l.trim(); });
+    if (lines.length > 1 && lines.every(function (l) { var c = l.trim().charAt(0); return c === "{" || c === "["; })) {
+      try { return { value: lines.map(function (l) { return JSON.parse(l); }), jsonl: true }; } catch (e) { return null; }
+    }
+    return null;
+  }
+  function looksHtml(text) { return /^\s*(<!doctype html|<html[\s>]|<body[\s>]|<article[\s>])/i.test(text); }
+  function looksMarkdown(text) { return /^#{1,6}\s|^```|^\s*[-*]\s+\S|\[[^\]]+\]\([^)]+\)|^\|.*\|\s*$|^>\s/m.test(text); }
+  function detect(text) {
+    if (state.format !== "auto") return state.format;
+    if (parseJson(text)) return "json";
+    if (looksHtml(text)) return "reader";
+    if (MERMAID_HEAD.test(text)) return "mermaid";
+    if (looksMarkdown(text)) return "markdown";
+    return "text";
+  }
+
+  var MODES = [["text", "글"], ["json", "JSON"], ["markdown", "MD"], ["mermaid", "Mermaid"], ["reader", "리더"]];
+  function available(mode) {
+    if (mode === "json") return state.data !== undefined;
+    if (mode === "mermaid") return MERMAID_HEAD.test(state.raw) || /```mermaid/.test(state.raw);
+    return true;
+  }
+  function renderTabs() {
+    var tabs = $("tabs"); tabs.textContent = "";
+    MODES.forEach(function (m) {
+      if (!available(m[0])) return;
+      var b = btn(m[1], function () { show(m[0]); });
+      b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(state.mode === m[0]));
+      tabs.appendChild(b);
+    });
+    tabs.appendChild(btn(state.dark ? "☀️" : "🌙", function () { setTheme(!state.dark); renderTabs(); if (state.mode === "mermaid" || state.mode === "markdown") show(state.mode, true); }, "밝기 전환"));
+  }
+  var rendered = {};
+  function show(mode, force) {
+    state.mode = mode;
+    MODES.forEach(function (m) { $("pane-" + m[0]).classList.toggle("hidden", m[0] !== mode); });
+    $("pathbar").classList.add("hidden");
+    renderTabs();
+    $("toolbar").textContent = "";
+    if (force) rendered[mode] = false;
+    ({ text: showText, json: showJson, markdown: showMarkdown, mermaid: showMermaid, reader: showReader })[mode]();
+    window.scrollTo(0, 0);
+  }
+
+  var textOpt = { wrap: true, numbers: false, size: 13 };
+  var textHits = [], textCur = -1;
+  function paintText(query) {
+    var pre = $("textPre"); pre.textContent = ""; pre.classList.toggle("wrap", textOpt.wrap); pre.style.fontSize = textOpt.size + "px";
+    textHits = []; textCur = -1;
+    var q = (query || "").toLowerCase();
+    state.raw.split("\n").forEach(function (line, i) {
+      if (textOpt.numbers) pre.appendChild(el("span", "ln", String(i + 1)));
+      if (!q) { pre.appendChild(document.createTextNode(line)); }
+      else {
+        var low = line.toLowerCase(), from = 0, at;
+        while ((at = low.indexOf(q, from)) >= 0) {
+          pre.appendChild(document.createTextNode(line.slice(from, at)));
+          var m = el("mark", null, line.slice(at, at + q.length)); pre.appendChild(m); textHits.push(m); from = at + q.length;
+        }
+        pre.appendChild(document.createTextNode(line.slice(from)));
+      }
+      pre.appendChild(document.createTextNode("\n"));
+    });
+    $("textCount") && ($("textCount").textContent = q ? textHits.length + "건" : "");
+    if (textHits.length) jumpText(0);
+  }
+  function jumpText(i) {
+    if (!textHits.length) return;
+    if (textCur >= 0) textHits[textCur].classList.remove("cur");
+    textCur = (i + textHits.length) % textHits.length;
+    textHits[textCur].classList.add("cur"); textHits[textCur].scrollIntoView({ block: "center" });
+    $("textCount").textContent = (textCur + 1) + "/" + textHits.length;
+  }
+  function showText() {
+    var bar = $("toolbar"), q = el("input"); q.type = "search"; q.placeholder = "찾기"; q.id = "textQ";
+    var timer; q.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(function () { paintText(q.value); }, 200); });
+    bar.appendChild(q); bar.appendChild(btn("▲", function () { jumpText(textCur - 1); })); bar.appendChild(btn("▼", function () { jumpText(textCur + 1); }));
+    var c = el("span", "count"); c.id = "textCount"; bar.appendChild(c);
+    var w = btn("줄바꿈", function () { textOpt.wrap = !textOpt.wrap; w.setAttribute("aria-pressed", textOpt.wrap); paintText(q.value); }); w.setAttribute("aria-pressed", textOpt.wrap);
+    var n = btn("줄 번호", function () { textOpt.numbers = !textOpt.numbers; n.setAttribute("aria-pressed", textOpt.numbers); paintText(q.value); }); n.setAttribute("aria-pressed", textOpt.numbers);
+    bar.appendChild(w); bar.appendChild(n);
+    bar.appendChild(btn("A−", function () { textOpt.size = Math.max(9, textOpt.size - 1); paintText(q.value); }));
+    bar.appendChild(btn("A+", function () { textOpt.size = Math.min(22, textOpt.size + 1); paintText(q.value); }));
+    bar.appendChild(btn("전체 복사", function () { copy(state.raw, "전체를"); }));
+    bar.appendChild(btn("저장", function () { download((state.title || "output").replace(/[\\/:*?"<>|]/g, "") + ".txt", state.raw); }));
+    paintText("");
+  }
+
+  var jsonOpt = { sortKeys: false, raw: false, filter: false, regex: false, level: 2 };
+  var selected = null;
+  function pathOf(parts) {
+    return parts.length ? parts.map(function (p) { return typeof p === "number" ? "[" + p + "]" : (/^[A-Za-z_$][\w$]*$/.test(p) ? "." + p : "[" + JSON.stringify(p) + "]"); }).join("").replace(/^\[/, ".[") : ".";
+  }
+  function embeddedJson(text) {
+    var t = text.trim(); if (t.length < 2 || !(t.charAt(0) === "{" || t.charAt(0) === "[")) return undefined;
+    try { var v = JSON.parse(t); return (v && typeof v === "object") ? v : undefined; } catch (e) { return undefined; }
+  }
+  var ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+  var HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+  function preview(value, into) {
+    if (typeof value === "string") {
+      if (ISO_DATE.test(value)) { var d = new Date(value); if (!isNaN(d)) into.appendChild(el("span", "hint", d.toLocaleString())); }
+      if (HEX_COLOR.test(value)) { var sw = el("span", "swatch"); sw.style.background = value; into.appendChild(sw); }
+    }
+    if (typeof value === "number" && value > 1e9 && value < 1e10 && Number.isInteger(value)) {
+      into.appendChild(el("span", "hint", new Date(value * 1000).toLocaleString() + "?"));
+    }
+  }
+  function primitive(value) {
+    if (value === null) return el("span", "v z", "null");
+    if (typeof value === "string") {
+      if (/^https?:\/\/\S+$/i.test(value)) { var a = el("a", "v s", value); a.href = value; a.addEventListener("click", function (e) { e.preventDefault(); openLink(value); }); return a; }
+      return el("span", "v s", JSON.stringify(value));
+    }
+    if (typeof value === "number") return el("span", "v n", String(value));
+    if (typeof value === "boolean") return el("span", "v b", String(value));
+    return el("span", "v", String(value));
+  }
+  function select(node, parts, value) {
+    if (selected) selected.classList.remove("sel");
+    selected = node; node.classList.add("sel");
+    $("pathText").textContent = pathOf(parts);
+    $("pathbar").classList.remove("hidden");
+    $("copyPath").onclick = function () { copy(pathOf(parts), "경로를"); };
+    $("copyValue").onclick = function () { copy(typeof value === "string" ? value : JSON.stringify(value, null, 2), "값을"); };
+  }
+  function isTableable(arr) {
+    return Array.isArray(arr) && arr.length > 1 && arr.every(function (x) { return x && typeof x === "object" && !Array.isArray(x); });
+  }
+  function tableOf(arr) {
+    var cols = []; arr.forEach(function (row) { Object.keys(row).forEach(function (k) { if (cols.indexOf(k) < 0) cols.push(k); }); });
+    var t = el("table", "grid"), head = el("tr");
+    head.appendChild(el("th", null, "#")); cols.forEach(function (c) { head.appendChild(el("th", null, c)); });
+    t.appendChild(head);
+    arr.forEach(function (row, i) {
+      var tr = el("tr"); tr.appendChild(el("td", "c", String(i)));
+      cols.forEach(function (c) { var v = row[c]; tr.appendChild(el("td", null, v === undefined ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v)))); });
+      t.appendChild(tr);
+    });
+    var csv = [cols.join(",")].concat(arr.map(function (row) {
+      return cols.map(function (c) { var v = row[c]; v = v === undefined ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v)); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(",");
+    })).join("\n");
+    return { table: t, csv: csv };
+  }
+  function build(value, key, parts, depth) {
+    if (typeof value === "string") {
+      var inner = embeddedJson(value);
+      if (inner !== undefined) { var node = build(inner, key, parts, depth); var s = node.querySelector("summary"); if (s) s.appendChild(el("span", "badge", "문자열 속 JSON")); return node; }
+    }
+    if (value !== null && typeof value === "object") {
+      var isArray = Array.isArray(value);
+      var keys = isArray ? value.map(function (_, i) { return i; }) : Object.keys(value);
+      if (!isArray && jsonOpt.sortKeys) keys.sort();
+      var details = el("details"); details.dataset.depth = depth;
+      if (depth < jsonOpt.level) details.open = true;
+      var sum = el("summary");
+      if (key !== undefined) { var k = el("span", "k", typeof key === "number" ? "[" + key + "]" : JSON.stringify(key)); sum.appendChild(k); sum.appendChild(el("span", "c", ": ")); }
+      sum.appendChild(el("span", "c", isArray ? "[" + value.length + "]" : "{" + keys.length + "}"));
+      sum.addEventListener("click", function (e) { if (e.target.classList.contains("k")) { e.preventDefault(); select(sum, parts, value); } });
+      if (isArray && isTableable(value)) {
+        var tb = btn("표", function (e) {
+          e.preventDefault(); e.stopPropagation();
+          var existing = details.querySelector(":scope > .tblwrap");
+          if (existing) { existing.remove(); return; }
+          var t = tableOf(value), wrap = el("div", "tblwrap");
+          wrap.appendChild(btn("CSV 복사", function () { copy(t.csv, "CSV 를"); })); wrap.appendChild(t.table);
+          details.insertBefore(wrap, sum.nextSibling); details.open = true;
+        }, "객체 배열을 표로 본다"); tb.className = "tbl-btn"; sum.appendChild(tb);
+      }
+      details.appendChild(sum);
+      keys.forEach(function (k2) { details.appendChild(build(value[k2], k2, parts.concat([k2]), depth + 1)); });
+      return details;
+    }
+    var leaf = el("div", "leaf");
+    if (key !== undefined) {
+      var kk = el("span", "k", typeof key === "number" ? "[" + key + "]" : JSON.stringify(key));
+      kk.addEventListener("click", function () { select(leaf, parts, value); });
+      leaf.appendChild(kk); leaf.appendChild(el("span", "c", ": "));
+    }
+    var prim = primitive(value);
+    if (prim.tagName !== "A") prim.addEventListener("click", function () { select(leaf, parts, value); copy(typeof value === "string" ? value : String(value), "값을"); });
+    leaf.appendChild(prim); preview(value, leaf);
+    return leaf;
+  }
+  function paintJson() {
+    var tree = $("jsonTree"); tree.textContent = ""; selected = null;
+    $("jsonRaw").classList.toggle("hidden", !jsonOpt.raw); tree.classList.toggle("hidden", jsonOpt.raw);
+    if (jsonOpt.raw) { $("jsonRaw").textContent = JSON.stringify(state.data, jsonOpt.sortKeys ? sortedReplacer : null, 2); return; }
+    tree.appendChild(build(state.data, undefined, [], 0));
+  }
+  function sortedReplacer(_, v) { if (v && typeof v === "object" && !Array.isArray(v)) { var o = {}; Object.keys(v).sort().forEach(function (k) { o[k] = v[k]; }); return o; } return v; }
+  function clearMarks(root) { root.querySelectorAll("mark").forEach(function (m) { m.replaceWith(document.createTextNode(m.textContent)); }); root.normalize(); }
+  function searchJson(query) {
+    var root = $("pane-json"); var tree = $("jsonTree"); clearMarks(tree);
+    tree.querySelectorAll(".fhide").forEach(function (n) { n.classList.remove("fhide"); });
+    root.classList.toggle("filtered", jsonOpt.filter && !!query);
+    if (!query) { $("jsonCount").textContent = ""; return; }
+    var test;
+    if (jsonOpt.regex) { try { var re = new RegExp(query, "i"); test = function (t) { var m = re.exec(t); return m && m[0] ? { at: m.index, len: m[0].length } : null; }; } catch (e) { $("jsonCount").textContent = "정규식 오류"; return; } }
+    else { var q = query.toLowerCase(); test = function (t) { var at = t.toLowerCase().indexOf(q); return at >= 0 ? { at: at, len: q.length } : null; }; }
+    var hits = 0, keep = new Set();
+    tree.querySelectorAll(".k, .s, .n, .b, .z").forEach(function (node) {
+      var text = node.textContent, m = test(text); if (!m) return;
+      hits++;
+      node.textContent = ""; node.appendChild(document.createTextNode(text.slice(0, m.at)));
+      node.appendChild(el("mark", null, text.slice(m.at, m.at + m.len))); node.appendChild(document.createTextNode(text.slice(m.at + m.len)));
+      for (var p = node.parentElement; p && p !== tree; p = p.parentElement) { if (p.tagName === "DETAILS") { p.open = true; keep.add(p); } if (p.classList.contains("leaf")) keep.add(p); }
+    });
+    if (jsonOpt.filter) tree.querySelectorAll("details, .leaf").forEach(function (n) { if (!keep.has(n)) n.classList.add("fhide"); });
+    $("jsonCount").textContent = hits + "건";
+    var first = tree.querySelector("mark"); if (first) first.scrollIntoView({ block: "center" });
+  }
+  function query(path, data) {
+    var tokens = [], re = /\.([A-Za-z_$][\w$]*)|\[(\d+)\]|\[\]|\["((?:[^"\\]|\\.)*)"\]|\.\[\]/g, m, used = 0;
+    var p = path.trim(); if (p === "." || p === "") return [data];
+    while ((m = re.exec(p))) { used += m[0].length; tokens.push(m[1] !== undefined ? m[1] : m[2] !== undefined ? Number(m[2]) : m[3] !== undefined ? JSON.parse('"' + m[3] + '"') : "[]"); }
+    if (used !== p.length) throw new Error("알아듣는 모양: .키  [숫자]  []  [\"키\"]  (예: .hits[].title)");
+    var cur = [data];
+    tokens.forEach(function (t) {
+      var next = [];
+      cur.forEach(function (v) {
+        if (t === "[]") { if (Array.isArray(v)) next = next.concat(v); else if (v && typeof v === "object") next = next.concat(Object.values(v)); }
+        else if (v !== null && typeof v === "object" && t in Object(v)) next.push(v[t]);
+      });
+      cur = next;
+    });
+    return cur;
+  }
+  function showJson() {
+    var bar = $("toolbar");
+    var q = el("input"); q.type = "search"; q.placeholder = "키·값 찾기"; var timer;
+    q.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(function () { searchJson(q.value); }, 200); });
+    bar.appendChild(q); var c = el("span", "count"); c.id = "jsonCount"; bar.appendChild(c);
+    var f = btn("걸러내기", function () { jsonOpt.filter = !jsonOpt.filter; f.setAttribute("aria-pressed", jsonOpt.filter); searchJson(q.value); }, "찾은 것만 남긴다"); f.setAttribute("aria-pressed", jsonOpt.filter);
+    var r = btn(".*", function () { jsonOpt.regex = !jsonOpt.regex; r.setAttribute("aria-pressed", jsonOpt.regex); searchJson(q.value); }, "정규식으로 찾기"); r.setAttribute("aria-pressed", jsonOpt.regex);
+    bar.appendChild(f); bar.appendChild(r);
+    var lv = el("select"); [["1", "1단계"], ["2", "2단계"], ["3", "3단계"], ["99", "모두 펼침"], ["0", "모두 접음"]].forEach(function (o) { var op = el("option", null, o[1]); op.value = o[0]; if (Number(o[0]) === jsonOpt.level) op.selected = true; lv.appendChild(op); });
+    lv.addEventListener("change", function () { jsonOpt.level = Number(lv.value); $("jsonTree").querySelectorAll("details").forEach(function (d) { d.open = Number(d.dataset.depth) < jsonOpt.level; }); });
+    bar.appendChild(lv);
+    var sk = btn("키 정렬", function () { jsonOpt.sortKeys = !jsonOpt.sortKeys; sk.setAttribute("aria-pressed", jsonOpt.sortKeys); paintJson(); searchJson(q.value); }); sk.setAttribute("aria-pressed", jsonOpt.sortKeys);
+    var rw = btn("원문", function () { jsonOpt.raw = !jsonOpt.raw; rw.setAttribute("aria-pressed", jsonOpt.raw); paintJson(); }, "보기 좋게 들여쓴 원문"); rw.setAttribute("aria-pressed", jsonOpt.raw);
+    bar.appendChild(sk); bar.appendChild(rw);
+    bar.appendChild(btn("전체 복사", function () { copy(JSON.stringify(state.data, null, 2), "JSON 을"); }));
+    var qi = el("input"); qi.type = "text"; qi.placeholder = "질의  .hits[].title"; qi.setAttribute("autocapitalize", "off"); qi.setAttribute("autocorrect", "off");
+    var run = function () {
+      var out = $("jsonQuery"); out.textContent = ""; if (!qi.value.trim()) return;
+      try {
+        var res = query(qi.value, state.data);
+        out.appendChild(el("div", "count", "질의 결과 " + res.length + "개"));
+        var pre = el("pre", null, JSON.stringify(res.length === 1 ? res[0] : res, null, 2)); pre.id = "jsonQueryOut"; pre.style.whiteSpace = "pre-wrap"; out.appendChild(pre);
+        out.appendChild(btn("결과 복사", function () { copy(pre.textContent, "결과를"); }));
+        out.scrollIntoView({ block: "start" });
+      } catch (e) { out.appendChild(el("div", "notice", e.message)); }
+    };
+    qi.addEventListener("keydown", function (e) { if (e.key === "Enter") run(); });
+    bar.appendChild(qi); bar.appendChild(btn("실행", run));
+    if (state.jsonl) notice("JSON Lines — 한 줄에 하나씩 " + state.data.length + "개를 배열로 보여줍니다.");
+    if (!rendered.json) { paintJson(); rendered.json = true; }
+  }
+
+  var mermaidLoading = null;
+  function loadMermaid() {
+    if (window.mermaid && typeof window.mermaid.run === "function") return Promise.resolve(true);
+    if (mermaidLoading) return mermaidLoading;
+    mermaidLoading = new Promise(function (resolve) {
+      var s = el("script"); s.src = "vendor/mermaid.min.js";
+      s.onload = function () { resolve(true); }; s.onerror = function () { resolve(false); };
+      document.head.appendChild(s); setTimeout(function () { resolve(!!window.mermaid); }, 20000);
+    });
+    return mermaidLoading;
+  }
+  function blockImages(node) {
+    if (node.nodeName !== "IMG") return;
+    var src = node.getAttribute("src") || "";
+    if (state.allowImages || /^data:image\//i.test(src)) return;
+    node.setAttribute("data-blocked-src", src.slice(0, 200));
+    node.removeAttribute("src"); node.removeAttribute("srcset");
+  }
+  function sanitize(html) {
+    if (!window.DOMPurify) return null;
+    DOMPurify.removeHook("afterSanitizeAttributes");
+    DOMPurify.addHook("afterSanitizeAttributes", blockImages);
+    var frag = DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, RETURN_DOM_FRAGMENT: true,
+      FORBID_TAGS: ["style", "form", "input", "button", "iframe", "object", "embed", "picture", "source", "video", "audio", "link", "meta"] });
+    var box = el("div"); box.appendChild(frag);
+    box.querySelectorAll("img[data-blocked-src]").forEach(function (img) {
+      img.replaceWith(el("span", "blocked-img", "🖼 외부 이미지 막음 — " + (img.getAttribute("alt") || img.getAttribute("data-blocked-src").slice(0, 60))));
+    });
+    box.querySelectorAll("a[href]").forEach(function (a) {
+      var href = a.getAttribute("href");
+      if (/^#/.test(href)) return;
+      a.addEventListener("click", function (e) { e.preventDefault(); openLink(href); });
+    });
+    return box;
+  }
+  function renderMarkdownInto(target, source) {
+    target.textContent = "";
+    var fm = source.match(/^﻿?\s*---\r?\n([\s\S]*?)\r?\n---\r?\n/), body = source;
+    if (fm) { body = source.slice(fm[0].length); }
+    var html = (window.marked && marked.parse) ? marked.parse(body) : null;
+    var box = html !== null ? sanitize(html) : null;
+    if (!box) { var pre = el("pre", null, source); pre.style.whiteSpace = "pre-wrap"; target.appendChild(el("div", "notice", "Markdown 라이브러리를 불러오지 못해 원문으로 보여줍니다.")); target.appendChild(pre); return; }
+    while (box.firstChild) target.appendChild(box.firstChild);
+    if (fm) {
+      var det = el("details", "front-matter"), tm = fm[1].match(/^title:\s*(.+)$/m);
+      det.appendChild(el("summary", null, tm ? tm[1].trim() : "문서 정보")); det.appendChild(el("pre", null, fm[1]));
+      target.insertBefore(det, target.firstChild);
+    }
+    target.querySelectorAll("h1,h2,h3,h4,h5,h6").forEach(function (h, i) { h.id = h.textContent.trim().toLowerCase().replace(/[^\w\sㄱ-ㆎ가-힣-]/g, "").replace(/\s+/g, "-") || "h-" + i; });
+    target.querySelectorAll("pre > code").forEach(function (code) {
+      var pre = code.parentElement, lang = (Array.from(code.classList).find(function (c) { return c.indexOf("language-") === 0; }) || "").replace("language-", "");
+      if (lang === "mermaid") { mermaidBlock(pre, code.textContent); return; }
+      var bar = el("div", "action-bar");
+      bar.appendChild(btn("📋 복사", function () { copy(code.textContent, "코드를"); }));
+      bar.appendChild(btn("💾", function () { download("code." + (lang || "txt"), code.textContent); }, "다운로드"));
+      pre.appendChild(bar);
+    });
+    renderMermaidIn(target);
+  }
+  function mermaidBlock(replaceNode, source) {
+    var wrap = el("div", "mermaid-wrap"), bar = el("div", "action-bar"), holder = el("div", "mermaid");
+    holder.textContent = source;
+    bar.appendChild(btn("📋 코드", function () { copy(source, "Mermaid 코드를"); }));
+    bar.appendChild(btn("🖼 이미지", function () { saveSvgAsPng(wrap); }));
+    wrap.appendChild(bar); wrap.appendChild(holder);
+    if (replaceNode) replaceNode.replaceWith(wrap);
+    return wrap;
+  }
+  function renderMermaidIn(root) {
+    var nodes = root.querySelectorAll(".mermaid:not([data-processed])");
+    if (!nodes.length) return;
+    loadMermaid().then(function (ok) {
+      if (!ok || !window.mermaid || typeof window.mermaid.run !== "function") { root.insertBefore(el("div", "notice", "Mermaid 를 불러오지 못해 코드로 보여줍니다."), root.firstChild); return; }
+      try {
+        mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default" });
+        mermaid.run({ nodes: Array.from(nodes) }).catch(function (e) { root.insertBefore(el("div", "notice", "Mermaid 오류: " + (e && e.message || e)), root.firstChild); });
+      } catch (e) { root.insertBefore(el("div", "notice", "Mermaid 오류: " + e.message), root.firstChild); }
+    });
+  }
+  function saveSvgAsPng(wrap) {
+    var svg = wrap.querySelector("svg"); if (!svg) { toast("아직 그려지지 않았습니다"); return; }
+    var box = svg.getBoundingClientRect(), w = box.width || 800, h = box.height || 600, clone = svg.cloneNode(true);
+    clone.setAttribute("width", w); clone.setAttribute("height", h); clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    var img = new Image();
+    img.onload = function () {
+      var c = el("canvas"); c.width = w * 2; c.height = h * 2; var ctx = c.getContext("2d"); ctx.scale(2, 2);
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+      var a = el("a"); a.download = "diagram.png"; a.href = c.toDataURL("image/png"); document.body.appendChild(a); a.click(); a.remove();
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(new XMLSerializer().serializeToString(clone))));
+  }
+  function showMarkdown() {
+    var bar = $("toolbar");
+    bar.appendChild(btn("📝 MD 복사", function () { copy(state.raw, "원본 Markdown 을"); }));
+    bar.appendChild(btn("💾 .md", function () { download((state.title || "document").replace(/[\\/:*?"<>|]/g, "") + ".md", state.raw, "text/markdown"); }));
+    var im = btn("외부 이미지", function () { state.allowImages = !state.allowImages; im.setAttribute("aria-pressed", state.allowImages); rendered.markdown = false; showMarkdownBody(); }, "외부 이미지를 불러오면 이미지 서버가 열람자 IP 를 본다");
+    im.setAttribute("aria-pressed", state.allowImages); bar.appendChild(im);
+    bar.appendChild(btn("⬆", function () { window.scrollTo({ top: 0, behavior: "smooth" }); })); bar.appendChild(btn("⬇", function () { window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); }));
+    showMarkdownBody();
+  }
+  function showMarkdownBody() { if (!rendered.markdown) { renderMarkdownInto($("md"), state.raw); rendered.markdown = true; } }
+
+  function showMermaid() {
+    var src = MERMAID_HEAD.test(state.raw) ? state.raw : ((state.raw.match(/```mermaid\s*\n([\s\S]*?)```/) || [])[1] || state.raw);
+    $("toolbar").appendChild(btn("📋 코드 복사", function () { copy(src, "Mermaid 코드를"); }));
+    if (!rendered.mermaid) { var box = $("mmd"); box.textContent = ""; box.appendChild(mermaidBlock(null, src)); renderMermaidIn(box); rendered.mermaid = true; }
+  }
+
+  var readerSize = 18;
+  function showReader() {
+    var bar = $("toolbar"), art = $("readerBody");
+    bar.appendChild(btn("가−", function () { readerSize = Math.max(13, readerSize - 1); art.style.fontSize = readerSize + "px"; }));
+    bar.appendChild(btn("가+", function () { readerSize = Math.min(28, readerSize + 1); art.style.fontSize = readerSize + "px"; }));
+    bar.appendChild(btn("줄간격", function () { art.style.lineHeight = art.style.lineHeight === "2.1" ? "1.75" : "2.1"; }));
+    art.style.fontSize = readerSize + "px";
+    if (rendered.reader) return;
+    art.textContent = "";
+    if (looksHtml(state.raw)) {
+      var doc = new DOMParser().parseFromString(state.raw, "text/html"), article = null;
+      try { if (window.Readability) article = new Readability(doc).parse(); } catch (e) { article = null; }
+      if (!article) { loadReadability().then(function () { rendered.reader = false; showReaderAgain(); }); art.appendChild(el("div", "notice", "본문 추출기를 불러오는 중…")); return; }
+      if (article.title) art.appendChild(el("h1", null, article.title));
+      var box = sanitize(article.content || ""); if (box) while (box.firstChild) art.appendChild(box.firstChild);
+    } else {
+      renderMarkdownInto(art, state.raw);
+    }
+    rendered.reader = true;
+  }
+  function showReaderAgain() { if (state.mode === "reader") show("reader", true); }
+  var readabilityLoading = null;
+  function loadReadability() {
+    if (window.Readability) return Promise.resolve(true);
+    if (!readabilityLoading) readabilityLoading = new Promise(function (resolve) { var s = el("script"); s.src = "vendor/Readability.js"; s.onload = function () { resolve(true); }; s.onerror = function () { resolve(false); }; document.head.appendChild(s); });
+    return readabilityLoading;
+  }
+
+  readPayload().then(function (text) {
+    state.raw = text;
+    $("title").textContent = state.title || "보기";
+    var parsed = parseJson(text);
+    if (parsed) { state.data = parsed.value; state.jsonl = parsed.jsonl; }
+    $("meta").textContent = text.length.toLocaleString() + "자 · " + text.split("\n").length.toLocaleString() + "줄";
+    if (looksHtml(text)) loadReadability();
+    show(detect(text));
+  }).catch(function (err) { notice(err.message); });
+})();
+</script>
+</body>
+</html>

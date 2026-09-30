@@ -1,0 +1,6 @@
+# 뷰어(view.html)가 쓰는 라이브러리 — npm 레지스트리에서 받아 버전을 고정했다 (2026-10-01)
+# 이름  버전  라이선스  파일  sha256
+marked  18.0.14  MIT  marked.umd.js  21568877a938d2c4e7d74e27f18e60da96bb73a68809610ca39216e1efebae62
+dompurify  3.4.16  MPL-2.0-OR-Apache-2.0  purify.min.js  2c90a9b46d6463f26038a29b686e82bc91de01fdac9d5229e7cfe3b360134ea2
+mermaid  12.0.0  MIT  mermaid.min.js  28fca7ae6ebc7ed7bb63bde63136a74bfef14f296a57e403657eeb8b32836073
+@mozilla/readability  0.6.0  Apache-2.0  Readability.js  34dcab3d0832d0019f02990eed6b6124e029e8c32b9f0c6f2550544ff8dff174
