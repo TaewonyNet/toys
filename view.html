@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://telegram.org 'sha256-TQlaMpxWCSxDgKz8dxUdu1iuVG3bpdJnov4ELD21acQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>보기</title>
 <!--
   통합 뷰어 Mini App — TelegramCommander 규약 8-4-2절 · 8-11절.
@@ -11,8 +12,47 @@
   데이터는 주소의 `#` 뒤에서만 읽는다 — f=형식, t=제목(base64url), z=본문(deflate-raw+base64url)
   또는 j=본문(base64url). `#` 뒤는 서버로 가지 않으므로 이 페이지를 내주는 서버도 데이터를 못 본다.
   데이터를 어디로도 보내지 않는다. 라이브러리는 같은 서버의 vendor/ 에서만 받는다(VERSIONS.txt).
-  Markdown·HTML 은 DOMPurify 로 거른 뒤에만 넣는다. 외부 이미지는 기본으로 막는다(열람자 IP 노출).
+  Markdown·HTML 은 DOMPurify 로 거른 뒤에만 넣는다. 외부 이미지는 **항상** 막는다(열람자 IP 노출) —
+  아래 CSP 의 `img-src 'self' data:` 가 네트워크 단에서도 같은 것을 강제하므로, "눌러서
+  보기" 토글은 2026-10-03 에 없앴다(과거엔 있었다. `aria-pressed` 로 켜고 끄는 버튼이었는데,
+  켜도 브라우저가 CSP 로 그 요청 자체를 막아 아무 일도 안 일어나는 죽은 버튼이 됐을 것이라
+  판단해 제거했다 — `blocked-img` 표시만 항상 남긴다).
   Markdown 모드는 TaewonyNet/toys markdownveiwer.js(2026-09-15)의 동작을 옮겼다.
+
+  CSP(2026-10-03 버그 수정) — 아래 `<meta http-equiv="Content-Security-Policy">` 가 이
+  파일 머리글의 "외부 요청 없음"·"vendor/ 에서만"을 네트워크 단에서 강제한다. 이전에는
+  `guardNetwork()`(아래 인라인 스크립트)가 `fetch`/`XMLHttpRequest`/`sendBeacon` 을 JS 로
+  덮어쓰는 것이 유일한 방어선이었고, `<img src="https://…">`·`<link>`·WebSocket·`<form>`
+  경로는 열려 있었다(구조 검토 2026-10-01 발견). CSP 는 이 경로들을 브라우저 자신이 막으므로
+  `guardNetwork()` 를 대체하지 않고 **한 겹 더 두른다**(그 함수는 CSP 를 지원하지 않는
+  아주 오래된 웹뷰를 위한 방어로 그대로 둔다).
+
+  각 지시의 근거(`webapp/README.md` 「CSP」절에 더 자세히 적었다):
+  - `script-src 'self' https://telegram.org 'sha256-…'` — `vendor/*`(DOMPurify·marked·
+    mermaid·Readability·Swagger UI Bundle, 전부 같은 출처)와 `telegram-web-app.js`
+    (8-10절과 같은 근거로 허용한 유일한 외부 호스트)만. 아래 머리글의 인라인 `<script>`
+    (guardNetwork + 본문 로직)는 `tools/gen-webapp.py` 같은 치환이 없는 **정적** 코드라서
+    해시가 깨질 일이 없다 — `index.html`(공개키 치환 때문에 해시를 못 쓴다)과 다른 점이다
+  - `style-src 'self' 'unsafe-inline'` — 머리글 `<style>` 은 해시로도 충분하지만,
+    Mermaid(12.0.0)가 렌더링한 SVG 는 노드마다 `style="…"` **속성**을 직접 박아 넣는다.
+    헤드리스 Chrome 으로 직접 확인했다(2026-10-03) — 해시만 걸면 콘솔에 76건의 위반이
+    뜨고("Note that hashes do not apply to event handlers, style attributes and
+    javascript:" — CSP 명세가 애초에 스타일 **속성**에는 해시를 허용하지 않는다), `'unsafe-inline'`
+    로 바꾸니 0건이 됐다. 즉 이 자리는 선택의 여지가 없다 — 해시를 유지하려면 Mermaid 다이어그램의
+    배색이 전부 사라진다
+  - `img-src 'self' data:'` · 외부 이미지 — 위 "눌러서 보기" 제거 판단 그대로. 헤드리스로
+    직접 `<img src="https://…">` 를 주입해 네트워크 단에서 `net::ERR_BLOCKED_BY_CSP` 로
+    막히는 것까지 확인했다(`blocked_reason: "csp"`) — DOMPurify 훅의 JS 차단과 별개로 CSP
+    가 진짜 방어선이다
+  - `connect-src 'none'` · `frame-src 'none'` · `object-src 'none'` · `base-uri 'none'` ·
+    `form-action 'none'` — 이 페이지는 이 다섯 경로를 하나도 쓰지 않는다(8-11절: 데이터는
+    `#` 뒤에서만 읽고 어디로도 보내지 않는다). 전부 헤드리스로 직접 공격해 봤다 —
+    `fetch`/`WebSocket` 은 "Failed to fetch"/연결 실패로, `<iframe>` 은 프레이밍 거부로,
+    `<base href="https://evil…">` 는 `document.baseURI` 가 실제 주소로 그대로 남는 것으로,
+    `<form action="https://evil…">` 제출은 "The request has been blocked" 로 전부 막혔다
+  - 7가지 보기 방식(글·JSON·CSV·Markdown·Mermaid·리더·OpenAPI) 전부 헤드리스로 렌더링
+    확인했고(Mermaid 코드블록이 든 Markdown, Readability 가 쓰는 리더, Swagger UI 가 쓰는
+    OpenAPI 포함) 위 `style-src 'unsafe-inline'` 반영 후에는 **CSP 위반 0건**이다
 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="vendor/purify.min.js"></script>
@@ -164,7 +204,7 @@
   var tg = window.Telegram && window.Telegram.WebApp;
   if (tg) { tg.ready(); tg.expand(); }
 
-  var state = { raw: "", title: "", format: "auto", data: undefined, jsonl: false, mode: null, dark: false, allowImages: false };
+  var state = { raw: "", title: "", format: "auto", data: undefined, jsonl: false, mode: null, dark: false };
   var $ = function (id) { return document.getElementById(id); };
 
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
@@ -581,7 +621,7 @@
   function blockImages(node) {
     if (node.nodeName !== "IMG") return;
     var src = node.getAttribute("src") || "";
-    if (state.allowImages || /^data:image\//i.test(src)) return;
+    if (/^data:image\//i.test(src)) return;
     node.setAttribute("data-blocked-src", src.slice(0, 200));
     node.removeAttribute("src"); node.removeAttribute("srcset");
   }
@@ -662,8 +702,6 @@
     var bar = $("toolbar");
     bar.appendChild(btn("📝 MD 복사", function () { copy(state.raw, "원본 Markdown 을"); }));
     bar.appendChild(btn("💾 .md", function () { download((state.title || "document").replace(/[\\/:*?"<>|]/g, "") + ".md", state.raw, "text/markdown"); }));
-    var im = btn("외부 이미지", function () { state.allowImages = !state.allowImages; im.setAttribute("aria-pressed", state.allowImages); rendered.markdown = false; showMarkdownBody(); }, "외부 이미지를 불러오면 이미지 서버가 열람자 IP 를 본다");
-    im.setAttribute("aria-pressed", state.allowImages); bar.appendChild(im);
     bar.appendChild(btn("⬆", function () { window.scrollTo({ top: 0, behavior: "smooth" }); })); bar.appendChild(btn("⬇", function () { window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); }));
     showMarkdownBody();
   }

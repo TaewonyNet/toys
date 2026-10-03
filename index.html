@@ -1,6 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://telegram.org; style-src 'self' 'sha256-ypNjjjkQWCP1VW5+igRU20ObvKDD8uOaO/v8Cu8T5fs='; img-src 'self' data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <!--
   charset 은 문서 앞 1024바이트 안에 와야 브라우저가 UTF-8 로 읽는다.
   이 페이지에는 <head> 가 없어(HTML5 암묵 태그) doctype 바로 뒤에 둔다.
@@ -39,6 +40,29 @@
   `history.replaceState`/`pushState` 호출이 **0건**임을 직접 확인했다
   (텔레그램은 자기 파라미터를 해시 `#` 에만 붙인다, 원본 7행) — 그래서
   `?k=` 는 이 스크립트를 불러와도 보존된다.
+
+  CSP(2026-10-03 버그 수정) — 위 `<meta http-equiv="Content-Security-Policy">` 가 이
+  주석이 말로만 적던 "그 외 외부 리소스는 전부 금지"를 네트워크 단에서 강제한다.
+  `script-src` 는 `'self'` 와 위 `https://telegram.org` 하나만 허용하고(다른 모든 외부
+  CDN·추적 스크립트가 끼어들 길을 막는다), `connect-src 'none'` 은 이 페이지가 암호문을
+  `fetch`/`XMLHttpRequest`/`WebSocket` 으로 **어디로도 보내지 못하게** 한다 — 유일한
+  전송 경로는 `window.Telegram.WebApp.sendData()`(텔레그램 네이티브 브리지, CSP 가
+  관여하지 않는 통로)뿐이어야 한다는 이 페이지의 설계를 그대로 강제로 못박는 것이다.
+-->
+<!--
+  왜 `script-src` 에 해시가 아니라 `'unsafe-inline'` 을 썼는가 — `webapp/README.md`
+  「CSP」절과 `view.html` 의 같은 절에 공통 근거가 있다. 요약: 아래 인라인 `<script>`
+  (352행)는 `tools/gen-webapp.py` 가 `PUBLIC_KEY_SPKI_B64` 자리를 배포마다 다른 실제
+  공개키 문자열로 **치환**한다 — 그러면 배포본마다 이 스크립트의 바이트가 달라져
+  해시가 매번 달라진다. 정적 해시 하나를 박아두면 `gen-webapp.py` 가 치환할 때마다
+  해시도 다시 계산해 갈아 끼워야 하는데, 이 파일은 "원본 그대로 열어도 동작은
+  막히고 안내만 뜨는" 플레이스홀더 상태로도 배포되므로(위 주석, `MIN_VALID_PUBLIC_KEY_LENGTH`
+  검사) 원본과 치환본 둘 다를 위한 해시를 유지하는 것은 배보다 배꼽이 크다. 이
+  스크립트는 `tools/gen-webapp.py` 가 쓰는 자리 하나(문자열 치환)뿐이고 사용자 입력을
+  그대로 집어넣지 않으므로(암호화 전에 거치는 것은 `TextEncoder`/WebCrypto 뿐, DOM에
+  HTML 로 꽂지 않는다), 이 파일에서 XSS 로 이어질 주입 지점이 없다 — `'unsafe-inline'`
+  이 지키려는 경계(모르는 스크립트 실행 차단)에 이 선택이 뚫는 구멍은 "이 파일 자체"뿐이고
+  그건 이미 신뢰해야 하는 소스다.
 -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <title>시크릿 암호화 입력</title>
